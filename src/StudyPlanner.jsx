@@ -148,8 +148,8 @@ function getAllWeeks() {
 // ============================================================
 // DEFAULT SCHEDULE GENERATOR
 // Matches the strategy discussed:
-//  - Mornings (1.5 hr): lectures - alternate CIS/ESE/CIS/ESE/CIS
-//  - Evenings (1.5 hr): homework on whichever has nearest deadline
+//  - Mornings (<span className="mono">1.5 hr</span>): lectures - alternate CIS/ESE/CIS/ESE/CIS
+//  - Evenings (<span className="mono">1.5 hr</span>): homework on whichever has nearest deadline
 //  - Weekends: light, only during spike weeks
 // ============================================================
 
@@ -594,6 +594,10 @@ export default function StudyPlanner() {
           max-width: 1280px;
           margin: 0 auto;
         }
+        .mono {
+          font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-feature-settings: "tnum" 1, "ss01" 1;
+        }
 
         .day-cell {
           background: #fdfbf5;
@@ -703,7 +707,7 @@ export default function StudyPlanner() {
         <header style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h1 style={{ fontFamily: '"Fredoka", -apple-system, BlinkMacSystemFont, sans-serif', fontSize: '34px', fontWeight: 700, margin: 0, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
+              <h1 style={{ fontFamily: '"Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif', fontSize: '34px', fontWeight: 700, margin: 0, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
                 Study Planner
               </h1>
               <div style={{ fontSize: '13px', color: '#6b6660', marginTop: '4px' }}>
@@ -722,11 +726,11 @@ export default function StudyPlanner() {
 
         {/* SEMESTER STATS BAR */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0', border: '1px solid #2d2a26', marginBottom: '24px' }}>
-          <StatCell label="This Week" value={`${weekHours.total.toFixed(1)}h`} sub={`${completedHours.toFixed(1)}h done`} />
+          <StatCell label="This Week" value={`${weekHours.total.toFixed(1)}h`} sub={<><span className="mono">{completedHours.toFixed(1)}h</span> done</>} />
           <StatCell label="ESE 5420" value={`${weekHours.ese.toFixed(1)}h`} sub="this week" color={COURSES.ESE.color} />
           <StatCell label="CIS 5450" value={`${weekHours.cis.toFixed(1)}h`} sub="this week" color={COURSES.CIS.color} />
-          <StatCell label="Total Logged" value={`${(semesterStats.doneCIS + semesterStats.doneESE).toFixed(0)}h`} sub={`of ${(semesterStats.totalCIS + semesterStats.totalESE).toFixed(0)}h`} />
-          <StatCell label="Tasks Done" value={`${semesterStats.doneBlocks}`} sub={`of ${semesterStats.totalBlocks}`} />
+          <StatCell label="Total Logged" value={`${(semesterStats.doneCIS + semesterStats.doneESE).toFixed(0)}h`} sub={<>of <span className="mono">{(semesterStats.totalCIS + semesterStats.totalESE).toFixed(0)}h</span></>} />
+          <StatCell label="Tasks Done" value={`${semesterStats.doneBlocks}`} sub={<>of <span className="mono">{semesterStats.totalBlocks}</span></>} />
         </div>
 
         {/* WEEK NAVIGATION */}
@@ -898,8 +902,8 @@ export default function StudyPlanner() {
               Default rhythm
             </div>
             <div style={{ fontSize: '13px', lineHeight: 1.6 }}>
-              <div><strong>Mornings:</strong> Lectures (1.5 hr) — CIS Mon/Wed/Fri, ESE Tue/Thu</div>
-              <div><strong>Evenings:</strong> Homework (1.5 hr) — alternate course</div>
+              <div><strong>Mornings:</strong> Lectures (<span className="mono">1.5 hr</span>) — CIS Mon/Wed/Fri, ESE Tue/Thu</div>
+              <div><strong>Evenings:</strong> Homework (<span className="mono">1.5 hr</span>) — alternate course</div>
               <div><strong>Friday PM:</strong> Light catch-up</div>
               <div><strong>Weekends:</strong> Off — except spike weeks</div>
             </div>
@@ -1016,7 +1020,7 @@ function StatCell({ label, value, sub, color }) {
       <div style={{ fontSize: '11px', color: '#6b6660', fontWeight: 500, marginBottom: '4px' }}>
         {label}
       </div>
-      <div style={{ fontSize: '24px', fontWeight: 600, color: color || '#2d2a26', lineHeight: 1 }}>
+      <div className="mono" style={{ fontSize: '24px', fontWeight: 600, color: color || '#2d2a26', lineHeight: 1 }}>
         {value}
       </div>
       {sub && (
@@ -1107,7 +1111,7 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
               </span>
             )}
             <span style={{ fontSize: '10px', fontWeight: 600, color: courseColor }}>
-              {block.course === 'BOTH' ? 'Both' : block.course} · {block.duration}h
+              {block.course === 'BOTH' ? 'Both' : block.course} · <span className="mono">{block.duration}h</span>
             </span>
             {block.optional && <span style={{ fontSize: '10px', color: '#6b6660' }}>opt</span>}
           </div>
