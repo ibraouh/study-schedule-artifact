@@ -276,12 +276,12 @@ const STORAGE_KEY = 'summer2026-schedule';
 const SLOT_ORDER = { morning: 0, evening: 1, weekend: 2, custom: 3 };
 
 function compareBlocks(a, b, fallbackDate) {
-  const aDate = a.originalDate || fallbackDate;
-  const bDate = b.originalDate || fallbackDate;
-  if (aDate !== bDate) return aDate.localeCompare(bDate);
   const aSlot = SLOT_ORDER[a.slot] ?? 99;
   const bSlot = SLOT_ORDER[b.slot] ?? 99;
-  return aSlot - bSlot;
+  if (aSlot !== bSlot) return aSlot - bSlot;
+  const aDate = a.originalDate || fallbackDate;
+  const bDate = b.originalDate || fallbackDate;
+  return aDate.localeCompare(bDate);
 }
 
 function backfillOriginalDate(parsed) {
