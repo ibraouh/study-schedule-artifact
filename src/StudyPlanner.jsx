@@ -428,11 +428,11 @@ function blockType(block) {
 }
 
 const TYPE_META = {
-  lecture:  { Icon: BookOpen,        label: 'LEC',  borderStyle: 'solid'  },
-  homework: { Icon: PencilLine,      label: 'HW',   borderStyle: 'dashed' },
-  quiz:     { Icon: ClipboardCheck,  label: 'QUIZ', borderStyle: 'dotted' },
-  spike:    { Icon: Zap,             label: 'PUSH', borderStyle: 'double' },
-  other:    { Icon: null,            label: '',     borderStyle: 'solid'  },
+  lecture:  { Icon: BookOpen,        label: 'LEC',  borderStyle: 'solid',  bg: '#fbf6e8' },
+  homework: { Icon: PencilLine,      label: 'HW',   borderStyle: 'dashed', bg: '#fff2c4' },
+  quiz:     { Icon: ClipboardCheck,  label: 'QUIZ', borderStyle: 'dotted', bg: '#eeeae0' },
+  spike:    { Icon: Zap,             label: 'PUSH', borderStyle: 'double', bg: '#ffe7c9' },
+  other:    { Icon: null,            label: '',     borderStyle: 'solid',  bg: '#fbf6e8' },
 };
 
 function compareBlocks(a, b, fallbackDate) {
@@ -1096,19 +1096,19 @@ export default function StudyPlanner() {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ display: 'inline-block', width: '18px', height: '14px', borderLeft: '4px solid #2d2a26' }}/>
+                <span style={{ display: 'inline-block', width: '20px', height: '14px', borderLeft: '4px solid #2d2a26', background: TYPE_META.lecture.bg }}/>
                 <BookOpen size={12}/> Lecture
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ display: 'inline-block', width: '18px', height: '14px', borderLeft: '4px dashed #2d2a26' }}/>
+                <span style={{ display: 'inline-block', width: '20px', height: '14px', borderLeft: '4px dashed #2d2a26', background: TYPE_META.homework.bg }}/>
                 <PencilLine size={12}/> Homework
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ display: 'inline-block', width: '18px', height: '14px', borderLeft: '4px dotted #2d2a26' }}/>
+                <span style={{ display: 'inline-block', width: '20px', height: '14px', borderLeft: '4px dotted #2d2a26', background: TYPE_META.quiz.bg }}/>
                 <ClipboardCheck size={12}/> Quiz
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ display: 'inline-block', width: '18px', height: '14px', borderLeft: '6px double #2d2a26' }}/>
+                <span style={{ display: 'inline-block', width: '20px', height: '14px', borderLeft: '6px double #2d2a26', background: TYPE_META.spike.bg }}/>
                 <Zap size={12}/> Push
               </div>
             </div>
@@ -1273,7 +1273,7 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
       draggable
       onDragStart={onDragStart}
       style={{
-        background: courseAccent,
+        background: meta.bg,
         borderLeft: `${borderWidth} ${meta.borderStyle} ${courseColor}`,
       }}
     >
@@ -1293,8 +1293,19 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
                 {meta.label}
               </span>
             )}
-            <span style={{ fontSize: '10px', fontWeight: 600, color: courseColor }}>
-              {block.course === 'BOTH' ? 'Both' : block.course} · <span className="mono">{block.duration}h</span>
+            <span style={{
+              fontSize: '9px',
+              fontWeight: 700,
+              letterSpacing: '0.05em',
+              padding: '2px 6px',
+              background: courseColor,
+              color: '#fff',
+              lineHeight: 1.4,
+            }}>
+              {block.course === 'BOTH' ? 'BOTH' : block.course}
+            </span>
+            <span style={{ fontSize: '10px', fontWeight: 600, color: '#4a4540' }}>
+              <span className="mono">{block.duration}h</span>
             </span>
             {block.optional && <span style={{ fontSize: '10px', color: '#6b6660' }}>opt</span>}
           </div>
