@@ -843,8 +843,8 @@ export default function StudyPlanner() {
                     key={dlIdx}
                     className="deadline-pill"
                     style={{
-                      background: dl.type === 'exam' ? '#fee2e2' : dl.type === 'project' ? '#fef3c7' : '#dbeafe',
-                      borderLeft: `3px solid ${dl.type === 'exam' ? '#dc2626' : dl.type === 'project' ? '#d97706' : COURSES[dl.course].color}`,
+                      background: dl.type === 'exam' ? '#fee2e2' : dl.type === 'project' ? '#ccfbf1' : '#ede9fe',
+                      borderLeft: `3px solid ${dl.type === 'exam' ? '#dc2626' : dl.type === 'project' ? '#0d9488' : '#7c3aed'}`,
                       color: '#1c1917',
                       width: '100%',
                     }}
