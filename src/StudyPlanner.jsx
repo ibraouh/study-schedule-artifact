@@ -585,7 +585,7 @@ export default function StudyPlanner() {
     <div style={{
       minHeight: '100vh',
       background: '#f5f1e8',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+      fontFamily: '"AppDigits", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
       color: '#2d2a26',
       padding: '24px 16px 48px',
     }}>
@@ -703,7 +703,7 @@ export default function StudyPlanner() {
         <header style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h1 style={{ fontSize: '28px', fontWeight: 600, margin: 0, lineHeight: 1.1 }}>
+              <h1 style={{ fontFamily: '"Fredoka", -apple-system, BlinkMacSystemFont, sans-serif', fontSize: '34px', fontWeight: 700, margin: 0, lineHeight: 1.1, letterSpacing: '-0.01em' }}>
                 Study Planner
               </h1>
               <div style={{ fontSize: '13px', color: '#6b6660', marginTop: '4px' }}>
