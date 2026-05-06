@@ -1093,9 +1093,6 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '10px', fontWeight: 600, color: courseColor }}>
-              {block.course === 'BOTH' ? 'Both' : block.course} · {block.duration}h
-            </span>
             {meta.label && (
               <span style={{
                 fontSize: '9px',
@@ -1109,6 +1106,9 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
                 {meta.label}
               </span>
             )}
+            <span style={{ fontSize: '10px', fontWeight: 600, color: courseColor }}>
+              {block.course === 'BOTH' ? 'Both' : block.course} · {block.duration}h
+            </span>
             {block.optional && <span style={{ fontSize: '10px', color: '#6b6660' }}>opt</span>}
           </div>
           <div style={{ fontWeight: 600, fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
