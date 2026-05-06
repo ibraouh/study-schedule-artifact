@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3, PencilLine, ClipboardCheck, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3, PencilLine, ClipboardCheck, Zap, ExternalLink } from 'lucide-react';
 
 // ============================================================
 // COURSE DATA — from Abe's syllabi & Canvas modules
@@ -153,6 +153,114 @@ function getAllWeeks() {
 //  - Weekends: light, only during spike weeks
 // ============================================================
 
+// ============================================================
+// COURSE LINK CONFIG
+// Maps each task to its Canvas URL. Per-block manual link wins.
+// ============================================================
+
+const ESE_BASE = 'https://canvas.upenn.edu/courses/1922441';
+const CIS_BASE = 'https://canvas.upenn.edu/courses/1922659';
+
+// ESE Canvas IDs are non-sequential — explicit lookup tables.
+const ESE_LECTURE_IDS = {
+  1: 4609372, 2: 4609373, 3: 4609374, 4: 4609375,
+  5: 4609377, 6: 4609379, 7: 4609380, 8: 4609381,
+  9: 4609382, 10: 4609385, 11: 4609386, 12: 4609387,
+  13: 4609388, 14: 4609390,
+};
+const ESE_HW_IDS = {
+  1: 14570430, 2: 14570437, 3: 14570439, 4: 14570440,
+  5: 14570442, 6: 14570444, 7: 14570446, 8: 14570447,
+  9: 14570449, 10: 14570432, 11: 14570434,
+};
+const ESE_QUIZ_IDS = {
+  1: 14570455, 2: 14570463, 3: 14570465, 4: 14570466,
+  5: 14570468, 6: 14570470, 7: 14570471, 8: 14570473,
+  9: 14570475, 10: 14570456, 11: 14570458,
+  12: 14570460, 13: 14570461,
+};
+
+const CIS_PROJECT_LINKS = {
+  proposal: `${CIS_BASE}/assignments/14580601`,
+  final:    `${CIS_BASE}/assignments/14580578`,
+};
+
+const CIS_HW0_URL    = `${CIS_BASE}/assignments/14580588`;
+const CIS_HW1_EC_URL = `${CIS_BASE}/assignments/14580589`;
+
+function eseLectureUrl(n)  { return ESE_LECTURE_IDS[n] ? `${ESE_BASE}/modules#module_${ESE_LECTURE_IDS[n]}` : null; }
+function eseHwUrl(n)       { return ESE_HW_IDS[n]      ? `${ESE_BASE}/assignments/${ESE_HW_IDS[n]}`      : null; }
+function eseQuizUrl(n)     { return ESE_QUIZ_IDS[n]    ? `${ESE_BASE}/assignments/${ESE_QUIZ_IDS[n]}`    : null; }
+function cisLectureUrl(n)  { return (n >= 1 && n <= 14) ? `${CIS_BASE}/modules#module_${4612980 + n}`     : null; }
+function cisHwUrl(n) {
+  if (n === 0) return CIS_HW0_URL;
+  if (n >= 1 && n <= 5) return `${CIS_BASE}/assignments/${14580589 + n}`;
+  return null;
+}
+
+function deriveDeadlineLink(deadline) {
+  const { course, label, type } = deadline;
+  if (course === 'CIS' && /HW1 Extra Credit/i.test(label)) return CIS_HW1_EC_URL;
+  if (course === 'CIS' && /Project Proposal/i.test(label)) return CIS_PROJECT_LINKS.proposal;
+  if (course === 'CIS' && /Course Project DUE/i.test(label)) return CIS_PROJECT_LINKS.final;
+  const hwMatch = /HW(\d+)/.exec(label);
+  if (hwMatch && type === 'hw') {
+    const n = parseInt(hwMatch[1], 10);
+    if (course === 'CIS') return cisHwUrl(n);
+    if (course === 'ESE') return eseHwUrl(n);
+  }
+  const quizMatch = /Quiz (\d+)/.exec(label);
+  if (quizMatch && course === 'ESE') {
+    return eseQuizUrl(parseInt(quizMatch[1], 10));
+  }
+  return null;
+}
+
+function hwNumForCourseAtDate(course, dateKey) {
+  if (!dateKey) return null;
+  for (const d of DEADLINES) {
+    if (d.course !== course || d.type !== 'hw') continue;
+    if (d.date < dateKey) continue;
+    const m = /HW(\d+)/.exec(d.label);
+    if (m) return parseInt(m[1], 10);
+  }
+  return null;
+}
+
+function quizNumForCourseAtDate(course, dateKey) {
+  if (!dateKey || course !== 'ESE') return null;
+  for (const d of DEADLINES) {
+    if (d.course !== course) continue;
+    if (d.date < dateKey) continue;
+    const m = /Quiz (\d+)/.exec(d.label);
+    if (m) return parseInt(m[1], 10);
+  }
+  return null;
+}
+
+function deriveBlockLink(block) {
+  const type = blockType(block);
+  const detailModuleMatch = block.detail ? /Module (\d+)/i.exec(block.detail) : null;
+  const moduleN = block.lectureNum
+    || (detailModuleMatch ? parseInt(detailModuleMatch[1], 10) : null);
+  const startKey = block.originalDate;
+  const hwN = block.hwNum || hwNumForCourseAtDate(block.course, startKey);
+  const quizN = block.quizNum || hwN || quizNumForCourseAtDate(block.course, startKey);
+
+  if (type === 'lecture' && moduleN) {
+    if (block.course === 'CIS') return cisLectureUrl(moduleN);
+    if (block.course === 'ESE') return eseLectureUrl(moduleN);
+  }
+  if (type === 'homework' && hwN) {
+    if (block.course === 'CIS') return cisHwUrl(hwN);
+    if (block.course === 'ESE') return eseHwUrl(hwN);
+  }
+  if (type === 'quiz' && quizN && block.course === 'ESE') {
+    return eseQuizUrl(quizN);
+  }
+  return null;
+}
+
 function getModuleForWeek(weekNum, courseId) {
   // Both courses have ~14 modules over the 14-15 week semester
   const modules = courseId === 'ESE' ? ESE_MODULES : CIS_MODULES;
@@ -177,6 +285,10 @@ function generateDefaultSchedule() {
     const eseModule = getModuleForWeek(weekNum, 'ESE');
     const cisModule = getModuleForWeek(weekNum, 'CIS');
     const weekDeadlines = getDeadlinesInWeek(week.start);
+    const weekStartKey = fmtDate(week.start);
+    const eseHwNum = hwNumForCourseAtDate('ESE', weekStartKey);
+    const cisHwNum = hwNumForCourseAtDate('CIS', weekStartKey);
+    const eseQuizNum = quizNumForCourseAtDate('ESE', weekStartKey);
 
     // Identify spike weeks for weekend bumps
     const hasExam = weekDeadlines.some(d => d.type === 'exam' || d.type === 'project');
@@ -206,6 +318,7 @@ function generateDefaultSchedule() {
           duration: 1.5,
           done: false,
           originalDate: dateKey,
+          lectureNum: morningModule.num,
         });
 
         // Evening homework: alternate too, but bias toward course with nearest deadline
@@ -224,6 +337,7 @@ function generateDefaultSchedule() {
             done: false,
             optional: true,
             originalDate: dateKey,
+            quizNum: eseQuizNum,
           });
         } else {
           blocks.push({
@@ -235,6 +349,7 @@ function generateDefaultSchedule() {
             duration: 1.5,
             done: false,
             originalDate: dateKey,
+            hwNum: eveningCourse === 'ESE' ? eseHwNum : cisHwNum,
           });
         }
       }
@@ -585,7 +700,7 @@ export default function StudyPlanner() {
     <div style={{
       minHeight: '100vh',
       background: '#f5f1e8',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
+      fontFamily: '"AppDigits", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
       color: '#2d2a26',
       padding: '24px 16px 48px',
     }}>
@@ -593,6 +708,10 @@ export default function StudyPlanner() {
         .planner-root {
           max-width: 1280px;
           margin: 0 auto;
+        }
+        .mono {
+          font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-feature-settings: "tnum" 1, "ss01" 1;
         }
 
         .day-cell {
@@ -615,11 +734,11 @@ export default function StudyPlanner() {
           box-shadow: inset 0 0 0 2px #c2410c;
         }
         .study-block {
-          padding: 8px 10px;
-          margin: 6px 0;
+          padding: 9px 11px;
+          margin: 7px 0;
           cursor: grab;
           font-size: 12px;
-          line-height: 1.4;
+          line-height: 1.45;
           position: relative;
           transition: transform 0.1s ease, box-shadow 0.1s ease;
           border: 1px solid #2d2a26;
@@ -703,8 +822,8 @@ export default function StudyPlanner() {
         <header style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
             <div>
-              <h1 style={{ fontSize: '28px', fontWeight: 600, margin: 0, lineHeight: 1.1 }}>
-                Summer 2026 Study Planner
+              <h1 style={{ fontFamily: '"Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif', fontSize: '34px', fontWeight: 700, margin: 0, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                Study Planner
               </h1>
               <div style={{ fontSize: '13px', color: '#6b6660', marginTop: '4px' }}>
                 ESE 5420 · Stats for DS &nbsp;|&nbsp; CIS 5450 · Big Data Analytics
@@ -722,11 +841,11 @@ export default function StudyPlanner() {
 
         {/* SEMESTER STATS BAR */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0', border: '1px solid #2d2a26', marginBottom: '24px' }}>
-          <StatCell label="This Week" value={`${weekHours.total.toFixed(1)}h`} sub={`${completedHours.toFixed(1)}h done`} />
+          <StatCell label="This Week" value={`${weekHours.total.toFixed(1)}h`} sub={<><span className="mono">{completedHours.toFixed(1)}h</span> done</>} />
           <StatCell label="ESE 5420" value={`${weekHours.ese.toFixed(1)}h`} sub="this week" color={COURSES.ESE.color} />
           <StatCell label="CIS 5450" value={`${weekHours.cis.toFixed(1)}h`} sub="this week" color={COURSES.CIS.color} />
-          <StatCell label="Total Logged" value={`${(semesterStats.doneCIS + semesterStats.doneESE).toFixed(0)}h`} sub={`of ${(semesterStats.totalCIS + semesterStats.totalESE).toFixed(0)}h`} />
-          <StatCell label="Tasks Done" value={`${semesterStats.doneBlocks}`} sub={`of ${semesterStats.totalBlocks}`} />
+          <StatCell label="Total Logged" value={`${(semesterStats.doneCIS + semesterStats.doneESE).toFixed(0)}h`} sub={<>of <span className="mono">{(semesterStats.totalCIS + semesterStats.totalESE).toFixed(0)}h</span></>} />
+          <StatCell label="Tasks Done" value={`${semesterStats.doneBlocks}`} sub={<>of <span className="mono">{semesterStats.totalBlocks}</span></>} />
         </div>
 
         {/* WEEK NAVIGATION */}
@@ -838,21 +957,45 @@ export default function StudyPlanner() {
                 </div>
 
                 {/* Deadlines */}
-                {day.deadlines.map((dl, dlIdx) => (
-                  <div
-                    key={dlIdx}
-                    className="deadline-pill"
-                    style={{
-                      background: dl.type === 'exam' ? '#fee2e2' : dl.type === 'project' ? '#fef3c7' : '#dbeafe',
-                      borderLeft: `3px solid ${dl.type === 'exam' ? '#dc2626' : dl.type === 'project' ? '#d97706' : COURSES[dl.course].color}`,
-                      color: '#1c1917',
-                      width: '100%',
-                    }}
-                  >
-                    <AlertCircle size={9} style={{ verticalAlign: 'middle', marginRight: '3px' }}/>
-                    {dl.course} · {dl.label}
-                  </div>
-                ))}
+                {day.deadlines.map((dl, dlIdx) => {
+                  const url = deriveDeadlineLink(dl);
+                  const pillStyle = {
+                    background: dl.type === 'exam' ? '#fee2e2' : dl.type === 'project' ? '#ccfbf1' : '#ede9fe',
+                    borderLeft: `3px solid ${dl.type === 'exam' ? '#dc2626' : dl.type === 'project' ? '#0d9488' : '#7c3aed'}`,
+                    color: '#1c1917',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    textDecoration: url ? 'underline' : 'none',
+                    textDecorationThickness: '1px',
+                    textUnderlineOffset: '2px',
+                  };
+                  const inner = (
+                    <>
+                      <AlertCircle size={9} style={{ flexShrink: 0 }}/>
+                      <span>{dl.course} · {dl.label}</span>
+                      {url && <ExternalLink size={9} style={{ marginLeft: 'auto', flexShrink: 0, opacity: 0.7 }}/>}
+                    </>
+                  );
+                  return url ? (
+                    <a
+                      key={dlIdx}
+                      className="deadline-pill"
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={pillStyle}
+                      title={url}
+                    >
+                      {inner}
+                    </a>
+                  ) : (
+                    <div key={dlIdx} className="deadline-pill" style={pillStyle}>
+                      {inner}
+                    </div>
+                  );
+                })}
 
                 {/* Study blocks */}
                 {day.blocks.map(block => (
@@ -898,8 +1041,8 @@ export default function StudyPlanner() {
               Default rhythm
             </div>
             <div style={{ fontSize: '13px', lineHeight: 1.6 }}>
-              <div><strong>Mornings:</strong> Lectures (1.5 hr) — CIS Mon/Wed/Fri, ESE Tue/Thu</div>
-              <div><strong>Evenings:</strong> Homework (1.5 hr) — alternate course</div>
+              <div><strong>Mornings:</strong> Lectures (<span className="mono">1.5 hr</span>) — CIS Mon/Wed/Fri, ESE Tue/Thu</div>
+              <div><strong>Evenings:</strong> Homework (<span className="mono">1.5 hr</span>) — alternate course</div>
               <div><strong>Friday PM:</strong> Light catch-up</div>
               <div><strong>Weekends:</strong> Off — except spike weeks</div>
             </div>
@@ -1016,7 +1159,7 @@ function StatCell({ label, value, sub, color }) {
       <div style={{ fontSize: '11px', color: '#6b6660', fontWeight: 500, marginBottom: '4px' }}>
         {label}
       </div>
-      <div style={{ fontSize: '24px', fontWeight: 600, color: color || '#2d2a26', lineHeight: 1 }}>
+      <div className="mono" style={{ fontSize: '24px', fontWeight: 600, color: color || '#2d2a26', lineHeight: 1 }}>
         {value}
       </div>
       {sub && (
@@ -1035,6 +1178,10 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
   const meta = TYPE_META[type];
   const TypeIcon = meta.Icon;
   const borderWidth = meta.borderStyle === 'double' ? '6px' : '4px';
+  const rawLink = block.link || deriveBlockLink(block);
+  const normalizedLink = rawLink
+    ? (/^https?:\/\//i.test(rawLink) || rawLink.startsWith('#') ? rawLink : `https://${rawLink}`)
+    : null;
 
   if (isEditing) {
     return (
@@ -1070,6 +1217,13 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
           onChange={(e) => onUpdate({ duration: parseFloat(e.target.value) || 0.5 })}
           placeholder="Hours"
         />
+        <input
+          className="inline-edit"
+          type="url"
+          value={block.link || ''}
+          onChange={(e) => onUpdate({ link: e.target.value })}
+          placeholder="Link (https://…)"
+        />
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
           <button className="btn btn-primary" style={{ flex: 1, padding: '4px' }} onClick={() => setEditing(false)}>Done</button>
           <button className="btn" style={{ padding: '4px 8px' }} onClick={onDelete} title="Delete">
@@ -1090,18 +1244,15 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
         borderLeft: `${borderWidth} ${meta.borderStyle} ${courseColor}`,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '10px', fontWeight: 600, color: courseColor }}>
-              {block.course === 'BOTH' ? 'Both' : block.course} · {block.duration}h
-            </span>
             {meta.label && (
               <span style={{
                 fontSize: '9px',
                 fontWeight: 700,
                 letterSpacing: '0.05em',
-                padding: '1px 5px',
+                padding: '2px 6px',
                 background: '#2d2a26',
                 color: '#fff',
                 lineHeight: 1.4,
@@ -1109,17 +1260,43 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
                 {meta.label}
               </span>
             )}
+            <span style={{ fontSize: '10px', fontWeight: 600, color: courseColor }}>
+              {block.course === 'BOTH' ? 'Both' : block.course} · <span className="mono">{block.duration}h</span>
+            </span>
             {block.optional && <span style={{ fontSize: '10px', color: '#6b6660' }}>opt</span>}
           </div>
-          <div style={{ fontWeight: 600, fontSize: '12px', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ fontWeight: 600, fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
             {TypeIcon && <TypeIcon size={12} style={{ flexShrink: 0 }}/>}
-            <span>{block.activity}</span>
+            {normalizedLink ? (
+              <a
+                href={normalizedLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                draggable={false}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'underline',
+                  textDecorationThickness: '1px',
+                  textUnderlineOffset: '2px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title={normalizedLink}
+              >
+                {block.activity}
+                <ExternalLink size={10} style={{ flexShrink: 0, opacity: 0.7 }}/>
+              </a>
+            ) : (
+              <span>{block.activity}</span>
+            )}
           </div>
-          <div style={{ fontSize: '11px', color: '#4a4540', marginTop: '1px', lineHeight: 1.3 }}>
+          <div style={{ fontSize: '11px', color: '#4a4540', marginTop: '2px', lineHeight: 1.4 }}>
             {block.detail}
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <button
             onClick={onToggle}
             style={{
