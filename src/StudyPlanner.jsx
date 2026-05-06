@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3 } from 'lucide-react';
 
 // ============================================================
@@ -271,6 +271,17 @@ function generateDefaultSchedule() {
 // MAIN COMPONENT
 // ============================================================
 
+const STORAGE_KEY = 'summer2026-schedule';
+
+function backfillOriginalDate(parsed) {
+  Object.keys(parsed).forEach(dateKey => {
+    parsed[dateKey] = (parsed[dateKey] || []).map(b =>
+      b.originalDate ? b : { ...b, originalDate: dateKey }
+    );
+  });
+  return parsed;
+}
+
 export default function StudyPlanner() {
   const allWeeks = useMemo(() => getAllWeeks(), []);
   const [currentWeekIdx, setCurrentWeekIdx] = useState(0);
@@ -280,50 +291,110 @@ export default function StudyPlanner() {
   const [draggedBlock, setDraggedBlock] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'saving' | 'error'
 
-  // Load from persistent storage on mount
+  const saveTimerRef = useRef(null);
+  const inFlightRef = useRef(null);
+
+  // Load: fetch from server, fall back to localStorage cache, then to fresh defaults.
   useEffect(() => {
-    function load() {
+    let cancelled = false;
+    async function load() {
+      // Paint quickly from cache if present.
+      let cached = null;
       try {
-        const stored = localStorage.getItem('summer2026-schedule');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          // Backfill originalDate for blocks saved before this field existed
-          Object.keys(parsed).forEach(dateKey => {
-            parsed[dateKey] = (parsed[dateKey] || []).map(b =>
-              b.originalDate ? b : { ...b, originalDate: dateKey }
-            );
-          });
-          setSchedule(parsed);
-        } else {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) cached = backfillOriginalDate(JSON.parse(stored));
+      } catch (e) {
+        console.error('Cache read failed:', e);
+      }
+      if (cached && !cancelled) setSchedule(cached);
+
+      try {
+        const res = await fetch('/api/schedule');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const { schedule: remote } = await res.json();
+        if (cancelled) return;
+
+        if (remote && typeof remote === 'object') {
+          const filled = backfillOriginalDate(remote);
+          setSchedule(filled);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(filled));
+        } else if (!cached) {
+          // Empty DB and no cache — seed with defaults and push.
           const fresh = generateDefaultSchedule();
           setSchedule(fresh);
-          localStorage.setItem('summer2026-schedule', JSON.stringify(fresh));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh));
+          queueSave(fresh);
         }
       } catch (e) {
-        console.error('Could not load:', e);
-        const fresh = generateDefaultSchedule();
-        setSchedule(fresh);
-        try {
-          localStorage.setItem('summer2026-schedule', JSON.stringify(fresh));
-        } catch (err) {
-          console.error('Could not persist:', err);
+        console.error('Server load failed, using cache:', e);
+        if (!cached && !cancelled) {
+          const fresh = generateDefaultSchedule();
+          setSchedule(fresh);
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(fresh)); } catch {}
         }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     }
     load();
+    return () => { cancelled = true; };
   }, []);
 
-  // Persist on changes
+  async function pushToServer(snapshot) {
+    setSyncStatus('saving');
+    try {
+      const res = await fetch('/api/schedule', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schedule: snapshot }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setSyncStatus('idle');
+    } catch (e) {
+      console.error('Server save failed:', e);
+      setSyncStatus('error');
+    }
+  }
+
+  function queueSave(snapshot) {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      inFlightRef.current = pushToServer(snapshot);
+    }, 600);
+  }
+
+  // Optimistic local update + cache + debounced server save.
   const saveSchedule = (newSchedule) => {
     setSchedule(newSchedule);
     try {
-      localStorage.setItem('summer2026-schedule', JSON.stringify(newSchedule));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSchedule));
     } catch (e) {
-      console.error('Save failed:', e);
+      console.error('Cache write failed:', e);
     }
+    queueSave(newSchedule);
   };
+
+  // Flush pending save on tab close so the last edit isn't lost.
+  useEffect(() => {
+    const flush = () => {
+      if (!saveTimerRef.current) return;
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      try {
+        const blob = new Blob(
+          [JSON.stringify({ schedule })],
+          { type: 'application/json' }
+        );
+        navigator.sendBeacon?.('/api/schedule', blob);
+      } catch (e) {
+        console.error('Beacon flush failed:', e);
+      }
+    };
+    window.addEventListener('beforeunload', flush);
+    return () => window.removeEventListener('beforeunload', flush);
+  }, [schedule]);
 
   const currentWeek = allWeeks[currentWeekIdx];
   const weekDays = useMemo(() => {
@@ -611,7 +682,10 @@ export default function StudyPlanner() {
               </div>
             </div>
             <div style={{ textAlign: 'right', fontSize: '12px', color: '#6b6660' }}>
-              {fmtShort(SEMESTER_START)} → {fmtShort(SEMESTER_END)}
+              <div>{fmtShort(SEMESTER_START)} → {fmtShort(SEMESTER_END)}</div>
+              <div style={{ marginTop: '2px', color: syncStatus === 'error' ? '#c44' : '#6b6660' }}>
+                {syncStatus === 'saving' ? 'Saving…' : syncStatus === 'error' ? 'Offline (saved locally)' : 'Synced'}
+              </div>
             </div>
           </div>
           <hr style={{ border: 'none', borderTop: '1px solid #2d2a26', marginTop: '16px' }}/>
