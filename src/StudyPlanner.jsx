@@ -238,6 +238,33 @@ function quizNumForCourseAtDate(course, dateKey) {
   return null;
 }
 
+const ALL_MODULES = { ESE: ESE_MODULES, CIS: CIS_MODULES };
+
+function lectureMinForBlock(block) {
+  if (typeof block.lectureMin === 'number') return block.lectureMin;
+  const detailMatch = block.detail ? /Module (\d+)/i.exec(block.detail) : null;
+  const n = block.lectureNum || (detailMatch ? parseInt(detailMatch[1], 10) : null);
+  if (!n) return null;
+  const mods = ALL_MODULES[block.course];
+  if (!mods) return null;
+  const mod = mods.find(m => m.num === n);
+  return mod ? mod.lectureMin : null;
+}
+
+function formatHours(min) {
+  if (min == null) return null;
+  if (min === 0) return '0h';
+  return `${(min / 60).toFixed(1)}h`;
+}
+
+function blockDisplayName(block) {
+  if (block.activity === 'Homework') {
+    const n = block.hwNum || hwNumForCourseAtDate(block.course, block.originalDate);
+    if (n != null) return `HW${n}`;
+  }
+  return block.activity;
+}
+
 function deriveBlockLink(block) {
   const type = blockType(block);
   const detailModuleMatch = block.detail ? /Module (\d+)/i.exec(block.detail) : null;
@@ -1182,6 +1209,9 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
   const normalizedLink = rawLink
     ? (/^https?:\/\//i.test(rawLink) || rawLink.startsWith('#') ? rawLink : `https://${rawLink}`)
     : null;
+  const displayName = blockDisplayName(block);
+  const lectureMin = type === 'lecture' ? lectureMinForBlock(block) : null;
+  const lectureHours = formatHours(lectureMin);
 
   if (isEditing) {
     return (
@@ -1285,16 +1315,22 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
                 }}
                 title={normalizedLink}
               >
-                {block.activity}
+                {displayName}
                 <ExternalLink size={10} style={{ flexShrink: 0, opacity: 0.7 }}/>
               </a>
             ) : (
-              <span>{block.activity}</span>
+              <span>{displayName}</span>
             )}
           </div>
           <div style={{ fontSize: '11px', color: '#4a4540', marginTop: '2px', lineHeight: 1.4 }}>
             {block.detail}
           </div>
+          {lectureHours && (
+            <div style={{ fontSize: '11px', color: '#6b6660', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Clock size={10} style={{ flexShrink: 0 }}/>
+              <span className="mono">{lectureHours}</span>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <button
