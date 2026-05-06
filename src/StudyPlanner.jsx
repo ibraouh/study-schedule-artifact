@@ -205,6 +205,7 @@ function generateDefaultSchedule() {
           detail: `Module ${morningModule.num}: ${morningModule.title}`,
           duration: 1.5,
           done: false,
+          originalDate: dateKey,
         });
 
         // Evening homework: alternate too, but bias toward course with nearest deadline
@@ -222,6 +223,7 @@ function generateDefaultSchedule() {
             duration: 1.0,
             done: false,
             optional: true,
+            originalDate: dateKey,
           });
         } else {
           blocks.push({
@@ -232,6 +234,7 @@ function generateDefaultSchedule() {
             detail: `${eveningCourse === 'ESE' ? 'ESE' : 'CIS'} HW work`,
             duration: 1.5,
             done: false,
+            originalDate: dateKey,
           });
         }
       }
@@ -252,6 +255,7 @@ function generateDefaultSchedule() {
             duration: 3.0,
             done: false,
             spike: true,
+            originalDate: dateKey,
           });
         }
       }
@@ -283,7 +287,14 @@ export default function StudyPlanner() {
       try {
         const stored = localStorage.getItem('summer2026-schedule');
         if (stored) {
-          setSchedule(JSON.parse(stored));
+          const parsed = JSON.parse(stored);
+          // Backfill originalDate for blocks saved before this field existed
+          Object.keys(parsed).forEach(dateKey => {
+            parsed[dateKey] = (parsed[dateKey] || []).map(b =>
+              b.originalDate ? b : { ...b, originalDate: dateKey }
+            );
+          });
+          setSchedule(parsed);
         } else {
           const fresh = generateDefaultSchedule();
           setSchedule(fresh);
@@ -376,6 +387,7 @@ export default function StudyPlanner() {
       duration: 1.0,
       done: false,
       custom: true,
+      originalDate: dateKey,
     };
     const newSchedule = { ...schedule };
     newSchedule[dateKey] = [...(newSchedule[dateKey] || []), newBlock];
@@ -401,12 +413,20 @@ export default function StudyPlanner() {
       return;
     }
     const newSchedule = { ...schedule };
+    const movedBlock = {
+      ...draggedBlock.block,
+      id: `${targetDateKey}-moved-${Date.now()}`,
+      originalDate: draggedBlock.block.originalDate || draggedBlock.dateKey,
+    };
     newSchedule[draggedBlock.dateKey] = (newSchedule[draggedBlock.dateKey] || [])
       .filter(b => b.id !== draggedBlock.block.id);
-    newSchedule[targetDateKey] = [
-      ...(newSchedule[targetDateKey] || []),
-      { ...draggedBlock.block, id: `${targetDateKey}-moved-${Date.now()}` },
-    ];
+    const targetBlocks = [...(newSchedule[targetDateKey] || []), movedBlock];
+    targetBlocks.sort((a, b) => {
+      const aDate = a.originalDate || targetDateKey;
+      const bDate = b.originalDate || targetDateKey;
+      return aDate.localeCompare(bDate);
+    });
+    newSchedule[targetDateKey] = targetBlocks;
     saveSchedule(newSchedule);
     setDraggedBlock(null);
   };
