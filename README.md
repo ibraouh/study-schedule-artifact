@@ -1,4 +1,4 @@
-# Summer 2026 Study Planner
+# Study Planner
 
 Interactive 14-week study planner for ESE 5420 (Stats for DS) and CIS 5450 (Big Data Analytics).
 

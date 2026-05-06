@@ -704,7 +704,7 @@ export default function StudyPlanner() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '12px' }}>
             <div>
               <h1 style={{ fontSize: '28px', fontWeight: 600, margin: 0, lineHeight: 1.1 }}>
-                Summer 2026 Study Planner
+                Study Planner
               </h1>
               <div style={{ fontSize: '13px', color: '#6b6660', marginTop: '4px' }}>
                 ESE 5420 · Stats for DS &nbsp;|&nbsp; CIS 5450 · Big Data Analytics
