@@ -185,11 +185,36 @@ const CIS_PROJECT_LINKS = {
   final:    `${CIS_BASE}/assignments/14580578`,
 };
 
+const CIS_HW0_URL    = `${CIS_BASE}/assignments/14580588`;
+const CIS_HW1_EC_URL = `${CIS_BASE}/assignments/14580589`;
+
 function eseLectureUrl(n)  { return ESE_LECTURE_IDS[n] ? `${ESE_BASE}/modules#module_${ESE_LECTURE_IDS[n]}` : null; }
 function eseHwUrl(n)       { return ESE_HW_IDS[n]      ? `${ESE_BASE}/assignments/${ESE_HW_IDS[n]}`      : null; }
 function eseQuizUrl(n)     { return ESE_QUIZ_IDS[n]    ? `${ESE_BASE}/assignments/${ESE_QUIZ_IDS[n]}`    : null; }
 function cisLectureUrl(n)  { return (n >= 1 && n <= 14) ? `${CIS_BASE}/modules#module_${4612980 + n}`     : null; }
-function cisHwUrl(n)       { return (n >= 1 && n <= 5)  ? `${CIS_BASE}/assignments/${14580589 + n}`       : null; }
+function cisHwUrl(n) {
+  if (n === 0) return CIS_HW0_URL;
+  if (n >= 1 && n <= 5) return `${CIS_BASE}/assignments/${14580589 + n}`;
+  return null;
+}
+
+function deriveDeadlineLink(deadline) {
+  const { course, label, type } = deadline;
+  if (course === 'CIS' && /HW1 Extra Credit/i.test(label)) return CIS_HW1_EC_URL;
+  if (course === 'CIS' && /Project Proposal/i.test(label)) return CIS_PROJECT_LINKS.proposal;
+  if (course === 'CIS' && /Course Project DUE/i.test(label)) return CIS_PROJECT_LINKS.final;
+  const hwMatch = /HW(\d+)/.exec(label);
+  if (hwMatch && type === 'hw') {
+    const n = parseInt(hwMatch[1], 10);
+    if (course === 'CIS') return cisHwUrl(n);
+    if (course === 'ESE') return eseHwUrl(n);
+  }
+  const quizMatch = /Quiz (\d+)/.exec(label);
+  if (quizMatch && course === 'ESE') {
+    return eseQuizUrl(parseInt(quizMatch[1], 10));
+  }
+  return null;
+}
 
 function hwNumForCourseAtDate(course, dateKey) {
   if (!dateKey) return null;
@@ -932,21 +957,45 @@ export default function StudyPlanner() {
                 </div>
 
                 {/* Deadlines */}
-                {day.deadlines.map((dl, dlIdx) => (
-                  <div
-                    key={dlIdx}
-                    className="deadline-pill"
-                    style={{
-                      background: dl.type === 'exam' ? '#fee2e2' : dl.type === 'project' ? '#ccfbf1' : '#ede9fe',
-                      borderLeft: `3px solid ${dl.type === 'exam' ? '#dc2626' : dl.type === 'project' ? '#0d9488' : '#7c3aed'}`,
-                      color: '#1c1917',
-                      width: '100%',
-                    }}
-                  >
-                    <AlertCircle size={9} style={{ verticalAlign: 'middle', marginRight: '3px' }}/>
-                    {dl.course} · {dl.label}
-                  </div>
-                ))}
+                {day.deadlines.map((dl, dlIdx) => {
+                  const url = deriveDeadlineLink(dl);
+                  const pillStyle = {
+                    background: dl.type === 'exam' ? '#fee2e2' : dl.type === 'project' ? '#ccfbf1' : '#ede9fe',
+                    borderLeft: `3px solid ${dl.type === 'exam' ? '#dc2626' : dl.type === 'project' ? '#0d9488' : '#7c3aed'}`,
+                    color: '#1c1917',
+                    width: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    textDecoration: url ? 'underline' : 'none',
+                    textDecorationThickness: '1px',
+                    textUnderlineOffset: '2px',
+                  };
+                  const inner = (
+                    <>
+                      <AlertCircle size={9} style={{ flexShrink: 0 }}/>
+                      <span>{dl.course} · {dl.label}</span>
+                      {url && <ExternalLink size={9} style={{ marginLeft: 'auto', flexShrink: 0, opacity: 0.7 }}/>}
+                    </>
+                  );
+                  return url ? (
+                    <a
+                      key={dlIdx}
+                      className="deadline-pill"
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={pillStyle}
+                      title={url}
+                    >
+                      {inner}
+                    </a>
+                  ) : (
+                    <div key={dlIdx} className="deadline-pill" style={pillStyle}>
+                      {inner}
+                    </div>
+                  );
+                })}
 
                 {/* Study blocks */}
                 {day.blocks.map(block => (
