@@ -273,6 +273,17 @@ function generateDefaultSchedule() {
 
 const STORAGE_KEY = 'summer2026-schedule';
 
+const SLOT_ORDER = { morning: 0, evening: 1, weekend: 2, custom: 3 };
+
+function compareBlocks(a, b, fallbackDate) {
+  const aDate = a.originalDate || fallbackDate;
+  const bDate = b.originalDate || fallbackDate;
+  if (aDate !== bDate) return aDate.localeCompare(bDate);
+  const aSlot = SLOT_ORDER[a.slot] ?? 99;
+  const bSlot = SLOT_ORDER[b.slot] ?? 99;
+  return aSlot - bSlot;
+}
+
 function backfillOriginalDate(parsed) {
   Object.keys(parsed).forEach(dateKey => {
     parsed[dateKey] = (parsed[dateKey] || []).map(b =>
@@ -402,11 +413,15 @@ export default function StudyPlanner() {
     const days = [];
     for (let i = 0; i < 7; i++) {
       const day = addDays(currentWeek.start, i);
+      const dateKey = fmtDate(day);
+      const dayBlocks = [...(schedule[dateKey] || [])].sort(
+        (a, b) => compareBlocks(a, b, dateKey)
+      );
       days.push({
         date: day,
-        dateKey: fmtDate(day),
-        blocks: schedule[fmtDate(day)] || [],
-        deadlines: DEADLINES.filter(d => d.date === fmtDate(day)),
+        dateKey,
+        blocks: dayBlocks,
+        deadlines: DEADLINES.filter(d => d.date === dateKey),
       });
     }
     return days;
@@ -492,11 +507,7 @@ export default function StudyPlanner() {
     newSchedule[draggedBlock.dateKey] = (newSchedule[draggedBlock.dateKey] || [])
       .filter(b => b.id !== draggedBlock.block.id);
     const targetBlocks = [...(newSchedule[targetDateKey] || []), movedBlock];
-    targetBlocks.sort((a, b) => {
-      const aDate = a.originalDate || targetDateKey;
-      const bDate = b.originalDate || targetDateKey;
-      return aDate.localeCompare(bDate);
-    });
+    targetBlocks.sort((a, b) => compareBlocks(a, b, targetDateKey));
     newSchedule[targetDateKey] = targetBlocks;
     saveSchedule(newSchedule);
     setDraggedBlock(null);
