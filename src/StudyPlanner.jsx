@@ -615,11 +615,11 @@ export default function StudyPlanner() {
           box-shadow: inset 0 0 0 2px #c2410c;
         }
         .study-block {
-          padding: 12px 14px;
-          margin: 10px 0;
+          padding: 9px 11px;
+          margin: 7px 0;
           cursor: grab;
           font-size: 12px;
-          line-height: 1.5;
+          line-height: 1.45;
           position: relative;
           transition: transform 0.1s ease, box-shadow 0.1s ease;
           border: 1px solid #2d2a26;
@@ -1111,15 +1111,15 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
             )}
             {block.optional && <span style={{ fontSize: '10px', color: '#6b6660' }}>opt</span>}
           </div>
-          <div style={{ fontWeight: 600, fontSize: '12px', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {TypeIcon && <TypeIcon size={13} style={{ flexShrink: 0 }}/>}
+          <div style={{ fontWeight: 600, fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            {TypeIcon && <TypeIcon size={12} style={{ flexShrink: 0 }}/>}
             <span>{block.activity}</span>
           </div>
-          <div style={{ fontSize: '11px', color: '#4a4540', marginTop: '4px', lineHeight: 1.45 }}>
+          <div style={{ fontSize: '11px', color: '#4a4540', marginTop: '2px', lineHeight: 1.4 }}>
             {block.detail}
           </div>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <button
             onClick={onToggle}
             style={{
