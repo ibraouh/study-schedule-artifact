@@ -740,6 +740,9 @@ export default function StudyPlanner() {
           font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
           font-feature-settings: "tnum" 1, "ss01" 1;
         }
+        .no-mono {
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        }
 
         .day-cell {
           background: #fdfbf5;
@@ -1315,11 +1318,11 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
                 }}
                 title={normalizedLink}
               >
-                {displayName}
+                <span className="no-mono">{displayName}</span>
                 <ExternalLink size={10} style={{ flexShrink: 0, opacity: 0.7 }}/>
               </a>
             ) : (
-              <span>{displayName}</span>
+              <span className="no-mono">{displayName}</span>
             )}
           </div>
           <div style={{ fontSize: '11px', color: '#4a4540', marginTop: '2px', lineHeight: 1.4 }}>
