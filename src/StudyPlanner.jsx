@@ -148,10 +148,93 @@ function getAllWeeks() {
 // ============================================================
 // DEFAULT SCHEDULE GENERATOR
 // Matches the strategy discussed:
-//  - Mornings (<span className="mono">1.5 hr</span>): lectures - alternate CIS/ESE/CIS/ESE/CIS
-//  - Evenings (<span className="mono">1.5 hr</span>): homework on whichever has nearest deadline
+//  - Mornings (1.5 hr): lectures - alternate CIS/ESE/CIS/ESE/CIS
+//  - Evenings (1.5 hr): homework on whichever has nearest deadline
 //  - Weekends: light, only during spike weeks
 // ============================================================
+
+// ============================================================
+// COURSE LINK CONFIG
+// Maps each task to its Canvas URL. Per-block manual link wins.
+// ============================================================
+
+const ESE_BASE = 'https://canvas.upenn.edu/courses/1922441';
+const CIS_BASE = 'https://canvas.upenn.edu/courses/1922659';
+
+// ESE Canvas IDs are non-sequential — explicit lookup tables.
+const ESE_LECTURE_IDS = {
+  1: 4609372, 2: 4609373, 3: 4609374, 4: 4609375,
+  5: 4609377, 6: 4609379, 7: 4609380, 8: 4609381,
+  // Modules 9–13 not yet captured — fill in if you have them.
+  14: 4609390,
+};
+const ESE_HW_IDS = {
+  1: 14570430, 2: 14570437, 3: 14570439, 4: 14570440,
+  5: 14570442, 6: 14570444, 7: 14570446, 8: 14570447,
+  9: 14570449, 10: 14570432, 11: 14570434,
+};
+const ESE_QUIZ_IDS = {
+  1: 14570455, 2: 14570463, 3: 14570465, 4: 14570466,
+  5: 14570468, 6: 14570470, 7: 14570471, 8: 14570473,
+  9: 14570475, 10: 14570456, 11: 14570458,
+  12: 14570460, 13: 14570461,
+};
+
+const CIS_PROJECT_LINKS = {
+  proposal: `${CIS_BASE}/assignments/14580601`,
+  final:    `${CIS_BASE}/assignments/14580578`,
+};
+
+function eseLectureUrl(n)  { return ESE_LECTURE_IDS[n] ? `${ESE_BASE}/modules#module_${ESE_LECTURE_IDS[n]}` : null; }
+function eseHwUrl(n)       { return ESE_HW_IDS[n]      ? `${ESE_BASE}/assignments/${ESE_HW_IDS[n]}`      : null; }
+function eseQuizUrl(n)     { return ESE_QUIZ_IDS[n]    ? `${ESE_BASE}/assignments/${ESE_QUIZ_IDS[n]}`    : null; }
+function cisLectureUrl(n)  { return (n >= 1 && n <= 14) ? `${CIS_BASE}/modules#module_${4612980 + n}`     : null; }
+function cisHwUrl(n)       { return (n >= 1 && n <= 5)  ? `${CIS_BASE}/assignments/${14580589 + n}`       : null; }
+
+function hwNumForCourseAtDate(course, dateKey) {
+  if (!dateKey) return null;
+  for (const d of DEADLINES) {
+    if (d.course !== course || d.type !== 'hw') continue;
+    if (d.date < dateKey) continue;
+    const m = /HW(\d+)/.exec(d.label);
+    if (m) return parseInt(m[1], 10);
+  }
+  return null;
+}
+
+function quizNumForCourseAtDate(course, dateKey) {
+  if (!dateKey || course !== 'ESE') return null;
+  for (const d of DEADLINES) {
+    if (d.course !== course) continue;
+    if (d.date < dateKey) continue;
+    const m = /Quiz (\d+)/.exec(d.label);
+    if (m) return parseInt(m[1], 10);
+  }
+  return null;
+}
+
+function deriveBlockLink(block) {
+  const type = blockType(block);
+  const detailModuleMatch = block.detail ? /Module (\d+)/i.exec(block.detail) : null;
+  const moduleN = block.lectureNum
+    || (detailModuleMatch ? parseInt(detailModuleMatch[1], 10) : null);
+  const startKey = block.originalDate;
+  const hwN = block.hwNum || hwNumForCourseAtDate(block.course, startKey);
+  const quizN = block.quizNum || hwN || quizNumForCourseAtDate(block.course, startKey);
+
+  if (type === 'lecture' && moduleN) {
+    if (block.course === 'CIS') return cisLectureUrl(moduleN);
+    if (block.course === 'ESE') return eseLectureUrl(moduleN);
+  }
+  if (type === 'homework' && hwN) {
+    if (block.course === 'CIS') return cisHwUrl(hwN);
+    if (block.course === 'ESE') return eseHwUrl(hwN);
+  }
+  if (type === 'quiz' && quizN && block.course === 'ESE') {
+    return eseQuizUrl(quizN);
+  }
+  return null;
+}
 
 function getModuleForWeek(weekNum, courseId) {
   // Both courses have ~14 modules over the 14-15 week semester
@@ -177,6 +260,10 @@ function generateDefaultSchedule() {
     const eseModule = getModuleForWeek(weekNum, 'ESE');
     const cisModule = getModuleForWeek(weekNum, 'CIS');
     const weekDeadlines = getDeadlinesInWeek(week.start);
+    const weekStartKey = fmtDate(week.start);
+    const eseHwNum = hwNumForCourseAtDate('ESE', weekStartKey);
+    const cisHwNum = hwNumForCourseAtDate('CIS', weekStartKey);
+    const eseQuizNum = quizNumForCourseAtDate('ESE', weekStartKey);
 
     // Identify spike weeks for weekend bumps
     const hasExam = weekDeadlines.some(d => d.type === 'exam' || d.type === 'project');
@@ -206,6 +293,7 @@ function generateDefaultSchedule() {
           duration: 1.5,
           done: false,
           originalDate: dateKey,
+          lectureNum: morningModule.num,
         });
 
         // Evening homework: alternate too, but bias toward course with nearest deadline
@@ -224,6 +312,7 @@ function generateDefaultSchedule() {
             done: false,
             optional: true,
             originalDate: dateKey,
+            quizNum: eseQuizNum,
           });
         } else {
           blocks.push({
@@ -235,6 +324,7 @@ function generateDefaultSchedule() {
             duration: 1.5,
             done: false,
             originalDate: dateKey,
+            hwNum: eveningCourse === 'ESE' ? eseHwNum : cisHwNum,
           });
         }
       }
@@ -1039,8 +1129,9 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
   const meta = TYPE_META[type];
   const TypeIcon = meta.Icon;
   const borderWidth = meta.borderStyle === 'double' ? '6px' : '4px';
-  const normalizedLink = block.link
-    ? (/^https?:\/\//i.test(block.link) ? block.link : `https://${block.link}`)
+  const rawLink = block.link || deriveBlockLink(block);
+  const normalizedLink = rawLink
+    ? (/^https?:\/\//i.test(rawLink) || rawLink.startsWith('#') ? rawLink : `https://${rawLink}`)
     : null;
 
   if (isEditing) {
