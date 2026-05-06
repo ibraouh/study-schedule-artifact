@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3, PencilLine, ClipboardCheck, Zap } from 'lucide-react';
 
 // ============================================================
 // COURSE DATA — from Abe's syllabi & Canvas modules
@@ -274,6 +274,24 @@ function generateDefaultSchedule() {
 const STORAGE_KEY = 'summer2026-schedule';
 
 const SLOT_ORDER = { morning: 0, evening: 1, weekend: 2, custom: 3 };
+
+function blockType(block) {
+  if (block.spike || block.slot === 'weekend') return 'spike';
+  if (block.slot === 'morning') return 'lecture';
+  const a = (block.activity || '').toLowerCase();
+  if (a.includes('lecture')) return 'lecture';
+  if (a.includes('quiz')) return 'quiz';
+  if (a.includes('homework') || a.includes('hw')) return 'homework';
+  return 'other';
+}
+
+const TYPE_META = {
+  lecture:  { Icon: BookOpen,        label: 'LEC',  borderStyle: 'solid'  },
+  homework: { Icon: PencilLine,      label: 'HW',   borderStyle: 'dashed' },
+  quiz:     { Icon: ClipboardCheck,  label: 'QUIZ', borderStyle: 'dotted' },
+  spike:    { Icon: Zap,             label: 'PUSH', borderStyle: 'double' },
+  other:    { Icon: null,            label: '',     borderStyle: 'solid'  },
+};
 
 function compareBlocks(a, b, fallbackDate) {
   const aSlot = SLOT_ORDER[a.slot] ?? 99;
@@ -899,6 +917,29 @@ export default function StudyPlanner() {
               <span style={{ fontSize: '13px' }}><strong>CIS 5450</strong> · Big Data · Ives & Zheng</span>
             </div>
           </div>
+          <div style={{ border: '1px solid #2d2a26', padding: '14px', background: '#fdfbf5' }}>
+            <div className="label-tiny" style={{ marginBottom: '8px' }}>
+              Type key
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px', fontSize: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ display: 'inline-block', width: '18px', height: '14px', borderLeft: '4px solid #2d2a26' }}/>
+                <BookOpen size={12}/> Lecture
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ display: 'inline-block', width: '18px', height: '14px', borderLeft: '4px dashed #2d2a26' }}/>
+                <PencilLine size={12}/> Homework
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ display: 'inline-block', width: '18px', height: '14px', borderLeft: '4px dotted #2d2a26' }}/>
+                <ClipboardCheck size={12}/> Quiz
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ display: 'inline-block', width: '18px', height: '14px', borderLeft: '6px double #2d2a26' }}/>
+                <Zap size={12}/> Push
+              </div>
+            </div>
+          </div>
         </div>
 
         <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '11px', color: '#6b6660', opacity: 0.5 }}>
@@ -990,6 +1031,10 @@ function StatCell({ label, value, sub, color }) {
 function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, isEditing, setEditing }) {
   const courseColor = block.course === 'BOTH' ? '#6b7280' : (COURSES[block.course]?.color || '#6b7280');
   const courseAccent = block.course === 'BOTH' ? '#e5e7eb' : (COURSES[block.course]?.accent || '#e5e7eb');
+  const type = blockType(block);
+  const meta = TYPE_META[type];
+  const TypeIcon = meta.Icon;
+  const borderWidth = meta.borderStyle === 'double' ? '6px' : '4px';
 
   if (isEditing) {
     return (
@@ -1042,20 +1087,33 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
       onDragStart={onDragStart}
       style={{
         background: courseAccent,
-        borderLeft: `4px solid ${courseColor}`,
+        borderLeft: `${borderWidth} ${meta.borderStyle} ${courseColor}`,
       }}
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4px' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '10px', fontWeight: 600, color: courseColor }}>
               {block.course === 'BOTH' ? 'Both' : block.course} · {block.duration}h
             </span>
-            {block.spike && <span style={{ fontSize: '10px' }}>⚡</span>}
+            {meta.label && (
+              <span style={{
+                fontSize: '9px',
+                fontWeight: 700,
+                letterSpacing: '0.05em',
+                padding: '1px 5px',
+                background: '#2d2a26',
+                color: '#fff',
+                lineHeight: 1.4,
+              }}>
+                {meta.label}
+              </span>
+            )}
             {block.optional && <span style={{ fontSize: '10px', color: '#6b6660' }}>opt</span>}
           </div>
-          <div style={{ fontWeight: 600, fontSize: '12px', marginTop: '2px' }}>
-            {block.activity}
+          <div style={{ fontWeight: 600, fontSize: '12px', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            {TypeIcon && <TypeIcon size={12} style={{ flexShrink: 0 }}/>}
+            <span>{block.activity}</span>
           </div>
           <div style={{ fontSize: '11px', color: '#4a4540', marginTop: '1px', lineHeight: 1.3 }}>
             {block.detail}
