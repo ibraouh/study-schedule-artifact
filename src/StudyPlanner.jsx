@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3, PencilLine, ClipboardCheck, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3, PencilLine, ClipboardCheck, Zap, ExternalLink } from 'lucide-react';
 
 // ============================================================
 // COURSE DATA — from Abe's syllabi & Canvas modules
@@ -1039,6 +1039,9 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
   const meta = TYPE_META[type];
   const TypeIcon = meta.Icon;
   const borderWidth = meta.borderStyle === 'double' ? '6px' : '4px';
+  const normalizedLink = block.link
+    ? (/^https?:\/\//i.test(block.link) ? block.link : `https://${block.link}`)
+    : null;
 
   if (isEditing) {
     return (
@@ -1073,6 +1076,13 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
           value={block.duration}
           onChange={(e) => onUpdate({ duration: parseFloat(e.target.value) || 0.5 })}
           placeholder="Hours"
+        />
+        <input
+          className="inline-edit"
+          type="url"
+          value={block.link || ''}
+          onChange={(e) => onUpdate({ link: e.target.value })}
+          placeholder="Link (https://…)"
         />
         <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
           <button className="btn btn-primary" style={{ flex: 1, padding: '4px' }} onClick={() => setEditing(false)}>Done</button>
@@ -1117,7 +1127,30 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
           </div>
           <div style={{ fontWeight: 600, fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
             {TypeIcon && <TypeIcon size={12} style={{ flexShrink: 0 }}/>}
-            <span>{block.activity}</span>
+            {normalizedLink ? (
+              <a
+                href={normalizedLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                draggable={false}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  color: 'inherit',
+                  textDecoration: 'underline',
+                  textDecorationThickness: '1px',
+                  textUnderlineOffset: '2px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+                title={normalizedLink}
+              >
+                {block.activity}
+                <ExternalLink size={10} style={{ flexShrink: 0, opacity: 0.7 }}/>
+              </a>
+            ) : (
+              <span>{block.activity}</span>
+            )}
           </div>
           <div style={{ fontSize: '11px', color: '#4a4540', marginTop: '2px', lineHeight: 1.4 }}>
             {block.detail}
