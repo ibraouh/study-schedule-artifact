@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3, PencilLine, ClipboardCheck, Zap, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3, PencilLine, ClipboardCheck, Zap, ExternalLink, Sun, Moon } from 'lucide-react';
 
 // ============================================================
 // COURSE DATA — from Abe's syllabi & Canvas modules
 // ============================================================
+
+const THEME_KEY = 'summer2026-theme';
 
 const COURSES = {
   ESE: {
     id: 'ESE',
     code: 'ESE 5420',
     name: 'Stats for DS',
-    color: '#c2410c', // burnt orange
-    accent: '#fed7aa',
+    color: 'var(--course-ese)',
   },
   CIS: {
     id: 'CIS',
     code: 'CIS 5450',
     name: 'Big Data Analytics',
-    color: '#1e3a8a', // deep navy
-    accent: '#bfdbfe',
+    color: 'var(--course-cis)',
   },
 };
 
@@ -428,11 +428,11 @@ function blockType(block) {
 }
 
 const TYPE_META = {
-  lecture:  { Icon: BookOpen,        label: 'LEC',  borderStyle: 'solid',  bg: '#fbf6e8' },
-  homework: { Icon: PencilLine,      label: 'HW',   borderStyle: 'dashed', bg: '#fff2c4' },
-  quiz:     { Icon: ClipboardCheck,  label: 'QUIZ', borderStyle: 'dotted', bg: '#eeeae0' },
-  spike:    { Icon: Zap,             label: 'PUSH', borderStyle: 'double', bg: '#ffe7c9' },
-  other:    { Icon: null,            label: '',     borderStyle: 'solid',  bg: '#fbf6e8' },
+  lecture:  { Icon: BookOpen,        label: 'LEC',  borderStyle: 'solid',  bg: 'var(--bg-block-lecture)' },
+  homework: { Icon: PencilLine,      label: 'HW',   borderStyle: 'dashed', bg: 'var(--bg-block-homework)' },
+  quiz:     { Icon: ClipboardCheck,  label: 'QUIZ', borderStyle: 'dotted', bg: 'var(--bg-block-quiz)' },
+  spike:    { Icon: Zap,             label: 'PUSH', borderStyle: 'double', bg: 'var(--bg-block-push)' },
+  other:    { Icon: null,            label: '',     borderStyle: 'solid',  bg: 'var(--bg-block-lecture)' },
 };
 
 function compareBlocks(a, b, fallbackDate) {
@@ -463,6 +463,19 @@ export default function StudyPlanner() {
   const [showStats, setShowStats] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'saving' | 'error'
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === 'undefined') return 'light';
+    try {
+      const stored = localStorage.getItem(THEME_KEY);
+      if (stored === 'light' || stored === 'dark') return stored;
+    } catch {}
+    return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem(THEME_KEY, theme); } catch {}
+  }, [theme]);
 
   const saveTimerRef = useRef(null);
   const inFlightRef = useRef(null);
@@ -717,8 +730,8 @@ export default function StudyPlanner() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f1e8', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif' }}>
-        <div style={{ color: '#6b6660', fontSize: '14px' }}>Loading…</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-page)', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Loading…</div>
       </div>
     );
   }
@@ -726,12 +739,81 @@ export default function StudyPlanner() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#f5f1e8',
+      background: 'var(--bg-page)',
       fontFamily: '"AppDigits", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif',
-      color: '#2d2a26',
+      color: 'var(--text)',
       padding: '24px 16px 48px',
     }}>
       <style>{`
+        :root {
+          --bg-page: #f5f1e8;
+          --bg-card: #fdfbf5;
+          --bg-card-weekend: #f0ebde;
+          --bg-card-today: #fff5d4;
+          --bg-card-drag: #fff8e8;
+          --bg-block-lecture: #fbf6e8;
+          --bg-block-homework: #fff2c4;
+          --bg-block-quiz: #eeeae0;
+          --bg-block-push: #ffe7c9;
+          --bg-block-edit: #ffffff;
+          --bg-input: #ffffff;
+          --text: #2d2a26;
+          --text-muted: #6b6660;
+          --text-detail: #4a4540;
+          --border: #2d2a26;
+          --accent: #c2410c;
+          --course-ese: #c2410c;
+          --course-cis: #1e3a8a;
+          --course-both: #6b7280;
+          --type-tag-bg: #2d2a26;
+          --type-tag-text: #ffffff;
+          --pill-text: #1c1917;
+          --pill-exam-bg: #fee2e2;
+          --pill-exam-border: #dc2626;
+          --pill-project-bg: #ccfbf1;
+          --pill-project-border: #0d9488;
+          --pill-hw-bg: #ede9fe;
+          --pill-hw-border: #7c3aed;
+          --shadow-color: #2d2a26;
+          --modal-overlay: rgba(45, 42, 38, 0.5);
+        }
+        [data-theme="dark"] {
+          --bg-page: #1a1816;
+          --bg-card: #252220;
+          --bg-card-weekend: #1f1d1b;
+          --bg-card-today: #3a2a08;
+          --bg-card-drag: #322820;
+          --bg-block-lecture: #2e2a22;
+          --bg-block-homework: #4a3d10;
+          --bg-block-quiz: #2c2a25;
+          --bg-block-push: #3d2c1a;
+          --bg-block-edit: #2d2a28;
+          --bg-input: #2d2a28;
+          --text: #e8e4dc;
+          --text-muted: #9a958c;
+          --text-detail: #c0bbb1;
+          --border: #5a544c;
+          --accent: #e85a1a;
+          --course-ese: #e85a1a;
+          --course-cis: #7a93de;
+          --course-both: #9aa3ad;
+          --type-tag-bg: #e8e4dc;
+          --type-tag-text: #1a1816;
+          --pill-text: #f3f1ec;
+          --pill-exam-bg: #3d1a1a;
+          --pill-exam-border: #ff6868;
+          --pill-project-bg: #1a3a35;
+          --pill-project-border: #3ed6b8;
+          --pill-hw-bg: #2e2840;
+          --pill-hw-border: #a78bfa;
+          --shadow-color: #000000;
+          --modal-overlay: rgba(0, 0, 0, 0.65);
+        }
+
+        html, body {
+          background: var(--bg-page);
+          color: var(--text);
+        }
         .planner-root {
           max-width: 1280px;
           margin: 0 auto;
@@ -745,23 +827,23 @@ export default function StudyPlanner() {
         }
 
         .day-cell {
-          background: #fdfbf5;
-          border: 1px solid #2d2a26;
+          background: var(--bg-card);
+          border: 1px solid var(--border);
           min-height: 220px;
           padding: 10px;
           position: relative;
-          transition: all 0.15s ease;
+          transition: background 0.15s ease, box-shadow 0.15s ease;
         }
         .day-cell.drag-over {
-          background: #fff8e8;
-          box-shadow: inset 0 0 0 3px #2d2a26;
+          background: var(--bg-card-drag);
+          box-shadow: inset 0 0 0 3px var(--border);
         }
         .day-cell.weekend {
-          background: #f0ebde;
+          background: var(--bg-card-weekend);
         }
         .day-cell.today {
-          background: #fff5d4;
-          box-shadow: inset 0 0 0 2px #c2410c;
+          background: var(--bg-card-today);
+          box-shadow: inset 0 0 0 2px var(--accent);
         }
         .study-block {
           padding: 9px 11px;
@@ -771,11 +853,11 @@ export default function StudyPlanner() {
           line-height: 1.45;
           position: relative;
           transition: transform 0.1s ease, box-shadow 0.1s ease;
-          border: 1px solid #2d2a26;
+          border: 1px solid var(--border);
         }
         .study-block:hover {
           transform: translateX(2px);
-          box-shadow: 3px 3px 0 #2d2a26;
+          box-shadow: 3px 3px 0 var(--shadow-color);
         }
         .study-block.done {
           opacity: 0.45;
@@ -794,9 +876,9 @@ export default function StudyPlanner() {
         .btn {
           font-size: 13px;
           padding: 6px 12px;
-          border: 1px solid #2d2a26;
-          background: #fdfbf5;
-          color: #2d2a26;
+          border: 1px solid var(--border);
+          background: var(--bg-card);
+          color: var(--text);
           cursor: pointer;
           font-weight: 500;
           transition: all 0.1s ease;
@@ -804,29 +886,32 @@ export default function StudyPlanner() {
           font-family: inherit;
         }
         .btn:hover {
-          background: #2d2a26;
-          color: #f5f1e8;
+          background: var(--text);
+          color: var(--bg-page);
         }
         .btn:disabled {
           opacity: 0.4;
           cursor: not-allowed;
         }
         .btn:disabled:hover {
-          background: #fdfbf5;
-          color: #2d2a26;
+          background: var(--bg-card);
+          color: var(--text);
         }
         .btn-primary {
-          background: #2d2a26;
-          color: #f5f1e8;
+          background: var(--text);
+          color: var(--bg-page);
         }
         .btn-primary:hover {
-          background: #c2410c;
-          border-color: #c2410c;
+          background: var(--accent);
+          border-color: var(--accent);
+        }
+        .btn-icon {
+          padding: 6px 8px;
         }
 
         .label-tiny {
           font-size: 11px;
-          color: #6b6660;
+          color: var(--text-muted);
           font-weight: 500;
         }
 
@@ -834,8 +919,9 @@ export default function StudyPlanner() {
           font-family: inherit;
           font-size: 12px;
           padding: 3px 6px;
-          border: 1px solid #2d2a26;
-          background: #fff;
+          border: 1px solid var(--border);
+          background: var(--bg-input);
+          color: var(--text);
           width: 100%;
           margin: 3px 0;
           border-radius: 3px;
@@ -855,22 +941,32 @@ export default function StudyPlanner() {
               <h1 style={{ fontFamily: '"Space Grotesk", -apple-system, BlinkMacSystemFont, sans-serif', fontSize: '34px', fontWeight: 700, margin: 0, lineHeight: 1.1, letterSpacing: '-0.02em' }}>
                 Study Planner
               </h1>
-              <div style={{ fontSize: '13px', color: '#6b6660', marginTop: '4px' }}>
+              <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
                 ESE 5420 · Stats for DS &nbsp;|&nbsp; CIS 5450 · Big Data Analytics
               </div>
             </div>
-            <div style={{ textAlign: 'right', fontSize: '12px', color: '#6b6660' }}>
-              <div>{fmtShort(SEMESTER_START)} → {fmtShort(SEMESTER_END)}</div>
-              <div style={{ marginTop: '2px', color: syncStatus === 'error' ? '#c44' : '#6b6660' }}>
-                {syncStatus === 'saving' ? 'Saving…' : syncStatus === 'error' ? 'Offline (saved locally)' : 'Synced'}
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '12px' }}>
+              <div style={{ textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)' }}>
+                <div>{fmtShort(SEMESTER_START)} → {fmtShort(SEMESTER_END)}</div>
+                <div style={{ marginTop: '2px', color: syncStatus === 'error' ? 'var(--pill-exam-border)' : 'var(--text-muted)' }}>
+                  {syncStatus === 'saving' ? 'Saving…' : syncStatus === 'error' ? 'Offline (saved locally)' : 'Synced'}
+                </div>
               </div>
+              <button
+                className="btn btn-icon"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              >
+                {theme === 'dark' ? <Sun size={14}/> : <Moon size={14}/>}
+              </button>
             </div>
           </div>
-          <hr style={{ border: 'none', borderTop: '1px solid #2d2a26', marginTop: '16px' }}/>
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', marginTop: '16px' }}/>
         </header>
 
         {/* SEMESTER STATS BAR */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0', border: '1px solid #2d2a26', marginBottom: '24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0', border: '1px solid var(--border)', marginBottom: '24px' }}>
           <StatCell label="This Week" value={`${weekHours.total.toFixed(1)}h`} sub={<><span className="mono">{completedHours.toFixed(1)}h</span> done</>} />
           <StatCell label="ESE 5420" value={`${weekHours.ese.toFixed(1)}h`} sub="this week" color={COURSES.ESE.color} />
           <StatCell label="CIS 5450" value={`${weekHours.cis.toFixed(1)}h`} sub="this week" color={COURSES.CIS.color} />
@@ -911,7 +1007,7 @@ export default function StudyPlanner() {
 
         {/* SEMESTER OVERVIEW (collapsible) */}
         {showStats && (
-          <div style={{ border: '1px solid #2d2a26', marginBottom: '16px', padding: '16px', background: '#fdfbf5' }}>
+          <div style={{ border: '1px solid var(--border)', marginBottom: '16px', padding: '16px', background: 'var(--bg-card)' }}>
             <div className="label-tiny" style={{ marginBottom: '12px' }}>
               Semester at a glance
             </div>
@@ -928,8 +1024,8 @@ export default function StudyPlanner() {
                     onClick={() => { setCurrentWeekIdx(idx); setShowStats(false); }}
                     style={{
                       padding: '8px 4px',
-                      border: idx === currentWeekIdx ? '2px solid #c2410c' : '1px solid #2d2a26',
-                      background: isSpike ? '#fef3c7' : '#fdfbf5',
+                      border: idx === currentWeekIdx ? '2px solid #c2410c' : '1px solid var(--border)',
+                      background: isSpike ? 'var(--bg-block-push)' : 'var(--bg-card)',
                       cursor: 'pointer',
                       fontSize: '11px',
                       textAlign: 'center',
@@ -939,20 +1035,20 @@ export default function StudyPlanner() {
                     title={`Week ${idx + 1}`}
                   >
                     <div style={{ fontWeight: 600 }}>W{idx + 1}</div>
-                    <div style={{ fontSize: '10px', color: '#6b6660' }}>{fmtShort(w.start)}</div>
+                    <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{fmtShort(w.start)}</div>
                     {isSpike && <div style={{ marginTop: '2px' }}>⚡</div>}
                   </button>
                 );
               })}
             </div>
-            <div style={{ fontSize: '11px', marginTop: '12px', color: '#6b6660' }}>
+            <div style={{ fontSize: '11px', marginTop: '12px', color: 'var(--text-muted)' }}>
               ⚡ = spike week (exam, project, or 2+ assignments due)
             </div>
           </div>
         )}
 
         {/* WEEK GRID */}
-        <div className="week-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', border: '1px solid #2d2a26', borderRight: 'none', borderBottom: 'none' }}>
+        <div className="week-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', border: '1px solid var(--border)', borderRight: 'none', borderBottom: 'none' }}>
           {weekDays.map((day, idx) => {
             const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
             const isToday = fmtDate(day.date) === fmtDate(new Date());
@@ -962,7 +1058,7 @@ export default function StudyPlanner() {
               <div
                 key={day.dateKey}
                 className={`day-cell ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}`}
-                style={{ borderRight: '1px solid #2d2a26', borderBottom: '1px solid #2d2a26' }}
+                style={{ borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
                 onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
                 onDragLeave={(e) => e.currentTarget.classList.remove('drag-over')}
                 onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove('drag-over'); handleDrop(day.dateKey); }}
@@ -970,7 +1066,7 @@ export default function StudyPlanner() {
                 {/* Day header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
                   <div>
-                    <div style={{ fontSize: '11px', color: '#6b6660', fontWeight: 500 }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500 }}>
                       {fmtDay(day.date)}
                     </div>
                     <div style={{ fontSize: '20px', fontWeight: 600, lineHeight: 1 }}>
@@ -990,9 +1086,9 @@ export default function StudyPlanner() {
                 {day.deadlines.map((dl, dlIdx) => {
                   const url = deriveDeadlineLink(dl);
                   const pillStyle = {
-                    background: dl.type === 'exam' ? '#fee2e2' : dl.type === 'project' ? '#ccfbf1' : '#ede9fe',
-                    borderLeft: `3px solid ${dl.type === 'exam' ? '#dc2626' : dl.type === 'project' ? '#0d9488' : '#7c3aed'}`,
-                    color: '#1c1917',
+                    background: dl.type === 'exam' ? 'var(--pill-exam-bg)' : dl.type === 'project' ? 'var(--pill-project-bg)' : 'var(--pill-hw-bg)',
+                    borderLeft: `3px solid ${dl.type === 'exam' ? 'var(--pill-exam-border)' : dl.type === 'project' ? 'var(--pill-project-border)' : 'var(--pill-hw-border)'}`,
+                    color: 'var(--pill-text)',
                     width: '100%',
                     display: 'flex',
                     alignItems: 'center',
@@ -1043,7 +1139,7 @@ export default function StudyPlanner() {
                 ))}
 
                 {day.blocks.length === 0 && !isWeekend && (
-                  <div style={{ fontSize: '11px', color: '#6b6660', opacity: 0.5, marginTop: '20px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', opacity: 0.5, marginTop: '20px', textAlign: 'center' }}>
                     — open —
                   </div>
                 )}
@@ -1054,7 +1150,7 @@ export default function StudyPlanner() {
 
         {/* LEGEND / NOTES */}
         <div style={{ marginTop: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-          <div style={{ border: '1px solid #2d2a26', padding: '14px', background: '#fdfbf5' }}>
+          <div style={{ border: '1px solid var(--border)', padding: '14px', background: 'var(--bg-card)' }}>
             <div className="label-tiny" style={{ marginBottom: '8px' }}>
               How to use
             </div>
@@ -1066,7 +1162,7 @@ export default function StudyPlanner() {
               <li>Changes save automatically</li>
             </ul>
           </div>
-          <div style={{ border: '1px solid #2d2a26', padding: '14px', background: '#fdfbf5' }}>
+          <div style={{ border: '1px solid var(--border)', padding: '14px', background: 'var(--bg-card)' }}>
             <div className="label-tiny" style={{ marginBottom: '8px' }}>
               Default rhythm
             </div>
@@ -1077,20 +1173,20 @@ export default function StudyPlanner() {
               <div><strong>Weekends:</strong> Off — except spike weeks</div>
             </div>
           </div>
-          <div style={{ border: '1px solid #2d2a26', padding: '14px', background: '#fdfbf5' }}>
+          <div style={{ border: '1px solid var(--border)', padding: '14px', background: 'var(--bg-card)' }}>
             <div className="label-tiny" style={{ marginBottom: '8px' }}>
               Course key
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <span style={{ display: 'inline-block', width: '14px', height: '14px', background: COURSES.ESE.color, border: '1px solid #2d2a26' }}/>
+              <span style={{ display: 'inline-block', width: '14px', height: '14px', background: COURSES.ESE.color, border: '1px solid var(--border)' }}/>
               <span style={{ fontSize: '13px' }}><strong>ESE 5420</strong> · Stats for DS · Hassani</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ display: 'inline-block', width: '14px', height: '14px', background: COURSES.CIS.color, border: '1px solid #2d2a26' }}/>
+              <span style={{ display: 'inline-block', width: '14px', height: '14px', background: COURSES.CIS.color, border: '1px solid var(--border)' }}/>
               <span style={{ fontSize: '13px' }}><strong>CIS 5450</strong> · Big Data · Ives & Zheng</span>
             </div>
           </div>
-          <div style={{ border: '1px solid #2d2a26', padding: '14px', background: '#fdfbf5' }}>
+          <div style={{ border: '1px solid var(--border)', padding: '14px', background: 'var(--bg-card)' }}>
             <div className="label-tiny" style={{ marginBottom: '8px' }}>
               Type key
             </div>
@@ -1115,7 +1211,7 @@ export default function StudyPlanner() {
           </div>
         </div>
 
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '11px', color: '#6b6660', opacity: 0.5 }}>
+        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '11px', color: 'var(--text-muted)', opacity: 0.5 }}>
           Built for Abe · Summer 2026
         </div>
       </div>
@@ -1127,7 +1223,7 @@ export default function StudyPlanner() {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(45, 42, 38, 0.5)',
+            background: 'var(--modal-overlay)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1138,8 +1234,8 @@ export default function StudyPlanner() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: '#fdfbf5',
-              border: '1px solid #2d2a26',
+              background: 'var(--bg-card)',
+              border: '1px solid var(--border)',
               maxWidth: '420px',
               width: '100%',
               padding: '24px',
@@ -1149,7 +1245,7 @@ export default function StudyPlanner() {
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>
               {confirmAction.title}
             </h3>
-            <p style={{ marginTop: '12px', marginBottom: '24px', fontSize: '13px', color: '#4a4540', lineHeight: 1.5 }}>
+            <p style={{ marginTop: '12px', marginBottom: '24px', fontSize: '13px', color: 'var(--text-detail)', lineHeight: 1.5 }}>
               {confirmAction.message}
             </p>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
@@ -1158,7 +1254,7 @@ export default function StudyPlanner() {
               </button>
               <button
                 className="btn btn-primary"
-                style={confirmAction.destructive ? { background: '#c2410c', borderColor: '#c2410c' } : {}}
+                style={confirmAction.destructive ? { background: 'var(--accent)', borderColor: 'var(--accent)' } : {}}
                 onClick={() => {
                   confirmAction.onConfirm();
                   setConfirmAction(null);
@@ -1182,18 +1278,18 @@ function StatCell({ label, value, sub, color }) {
   return (
     <div style={{
       padding: '14px 16px',
-      borderRight: '1px solid #2d2a26',
-      background: '#fdfbf5',
+      borderRight: '1px solid var(--border)',
+      background: 'var(--bg-card)',
       position: 'relative',
     }}>
-      <div style={{ fontSize: '11px', color: '#6b6660', fontWeight: 500, marginBottom: '4px' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 500, marginBottom: '4px' }}>
         {label}
       </div>
-      <div className="mono" style={{ fontSize: '24px', fontWeight: 600, color: color || '#2d2a26', lineHeight: 1 }}>
+      <div className="mono" style={{ fontSize: '24px', fontWeight: 600, color: color || 'var(--text)', lineHeight: 1 }}>
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: '11px', color: '#6b6660', marginTop: '3px' }}>
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '3px' }}>
           {sub}
         </div>
       )}
@@ -1202,7 +1298,7 @@ function StatCell({ label, value, sub, color }) {
 }
 
 function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, isEditing, setEditing }) {
-  const courseColor = block.course === 'BOTH' ? '#6b7280' : (COURSES[block.course]?.color || '#6b7280');
+  const courseColor = block.course === 'BOTH' ? 'var(--course-both)' : (COURSES[block.course]?.color || 'var(--course-both)');
   const courseAccent = block.course === 'BOTH' ? '#e5e7eb' : (COURSES[block.course]?.accent || '#e5e7eb');
   const type = blockType(block);
   const meta = TYPE_META[type];
@@ -1218,7 +1314,7 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
 
   if (isEditing) {
     return (
-      <div className="study-block" style={{ background: '#fff', borderColor: '#c2410c', borderWidth: '2px' }}>
+      <div className="study-block" style={{ background: 'var(--bg-block-edit)', borderColor: 'var(--accent)', borderWidth: '2px' }}>
         <select
           className="inline-edit"
           value={block.course}
@@ -1286,8 +1382,8 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
                 fontWeight: 700,
                 letterSpacing: '0.05em',
                 padding: '2px 6px',
-                background: '#2d2a26',
-                color: '#fff',
+                background: 'var(--type-tag-bg)',
+                color: 'var(--type-tag-text)',
                 lineHeight: 1.4,
               }}>
                 {meta.label}
@@ -1299,15 +1395,15 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
               letterSpacing: '0.05em',
               padding: '2px 6px',
               background: courseColor,
-              color: '#fff',
+              color: '#ffffff',
               lineHeight: 1.4,
             }}>
               {block.course === 'BOTH' ? 'BOTH' : block.course}
             </span>
-            <span style={{ fontSize: '10px', fontWeight: 600, color: '#4a4540' }}>
+            <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--text-detail)' }}>
               <span className="mono">{block.duration}h</span>
             </span>
-            {block.optional && <span style={{ fontSize: '10px', color: '#6b6660' }}>opt</span>}
+            {block.optional && <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>opt</span>}
           </div>
           <div style={{ fontWeight: 600, fontSize: '12px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '5px' }}>
             {TypeIcon && <TypeIcon size={12} style={{ flexShrink: 0 }}/>}
@@ -1336,11 +1432,11 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
               <span className="no-mono">{displayName}</span>
             )}
           </div>
-          <div style={{ fontSize: '11px', color: '#4a4540', marginTop: '2px', lineHeight: 1.4 }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-detail)', marginTop: '2px', lineHeight: 1.4 }}>
             {block.detail}
           </div>
           {lectureHours && (
-            <div style={{ fontSize: '11px', color: '#6b6660', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Clock size={10} style={{ flexShrink: 0 }}/>
               <span className="mono">{lectureHours}</span>
             </div>
@@ -1351,15 +1447,16 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
             onClick={onToggle}
             style={{
               width: '18px', height: '18px',
-              border: '1.5px solid #2d2a26',
-              background: block.done ? '#2d2a26' : '#fff',
+              border: '1.5px solid var(--border)',
+              background: block.done ? 'var(--text)' : 'var(--bg-input)',
+              color: 'var(--bg-page)',
               cursor: 'pointer',
               padding: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}
             title={block.done ? 'Mark undone' : 'Mark done'}
           >
-            {block.done && <Check size={11} color="#fff" strokeWidth={3}/>}
+            {block.done && <Check size={11} strokeWidth={3}/>}
           </button>
           <button
             onClick={() => setEditing(true)}
