@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3, PencilLine, ClipboardCheck, Zap, ExternalLink, Sun, Moon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Check, Clock, AlertCircle, BookOpen, Code2, RotateCcw, Edit3, PencilLine, ClipboardCheck, Zap, ExternalLink, Sun, Moon, Scissors, CalendarPlus } from 'lucide-react';
 
 // ============================================================
 // COURSE DATA — from Abe's syllabi & Canvas modules
@@ -143,6 +143,23 @@ function getAllWeeks() {
     weekNum++;
   }
   return weeks;
+}
+
+function findCurrentWeekIdx(weeks) {
+  if (!weeks.length) return 0;
+  const mondayKey = fmtDate(getWeekStart(new Date()));
+  const idx = weeks.findIndex(w => fmtDate(w.start) === mondayKey);
+  if (idx >= 0) return idx;
+  return new Date() < weeks[0].start ? 0 : weeks.length - 1;
+}
+
+// Sat/Sun → following Monday; Mon-Fri → same weekday +7.
+function getNextWeekDate(dateKey) {
+  const day = new Date(dateKey + 'T00:00:00');
+  const dayOfWeek = day.getDay();
+  if (dayOfWeek === 0) return addDays(day, 1);
+  if (dayOfWeek === 6) return addDays(day, 2);
+  return addDays(day, 7);
 }
 
 // ============================================================
@@ -317,7 +334,6 @@ function generateDefaultSchedule() {
     const cisHwNum = hwNumForCourseAtDate('CIS', weekStartKey);
     const eseQuizNum = quizNumForCourseAtDate('ESE', weekStartKey);
 
-    // Identify spike weeks for weekend bumps
     const hasExam = weekDeadlines.some(d => d.type === 'exam' || d.type === 'project');
     const hwCount = weekDeadlines.filter(d => d.type === 'hw').length;
     const isSpike = hasExam || hwCount >= 2;
@@ -325,81 +341,101 @@ function generateDefaultSchedule() {
     for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
       const day = addDays(week.start, dayOffset);
       const dateKey = fmtDate(day);
-      const dayOfWeek = day.getDay(); // 0=Sun, 1=Mon... 6=Sat
+      const dayOfWeek = day.getDay();
       const blocks = [];
 
-      // Weekday pattern: Mon-Fri
-      if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-        // Morning lecture: alternate Mon/Wed/Fri = CIS, Tue/Thu = ESE
-        // (CIS gets 3 mornings because it has 70% more lecture content)
-        const isCISMorning = dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 5;
-        const morningCourse = isCISMorning ? 'CIS' : 'ESE';
-        const morningModule = isCISMorning ? cisModule : eseModule;
-
+      // Mon AM — full week's CIS lecture content in one block
+      if (dayOfWeek === 1) {
         blocks.push({
-          id: `${dateKey}-am`,
+          id: `${dateKey}-cis-lec`,
           slot: 'morning',
-          course: morningCourse,
+          course: 'CIS',
           activity: 'Lectures',
-          detail: `Module ${morningModule.num}: ${morningModule.title}`,
-          duration: 1.5,
+          detail: `Module ${cisModule.num}: ${cisModule.title}`,
+          duration: 4.5,
           done: false,
           originalDate: dateKey,
-          lectureNum: morningModule.num,
+          lectureNum: cisModule.num,
         });
-
-        // Evening homework: alternate too, but bias toward course with nearest deadline
-        const eveningCourse = dayOfWeek === 5 ? null : (isCISMorning ? 'ESE' : 'CIS');
-        const eveningModule = eveningCourse === 'CIS' ? cisModule : eseModule;
-
-        if (dayOfWeek === 5) {
-          // Friday evening: light - quizzes or off
-          blocks.push({
-            id: `${dateKey}-pm`,
-            slot: 'evening',
-            course: 'BOTH',
-            activity: 'Quizzes / Catch-up',
-            detail: 'Light: weekly quizzes, review notes, or rest',
-            duration: 1.0,
-            done: false,
-            optional: true,
-            originalDate: dateKey,
-            quizNum: eseQuizNum,
-          });
-        } else {
-          blocks.push({
-            id: `${dateKey}-pm`,
-            slot: 'evening',
-            course: eveningCourse,
-            activity: 'Homework',
-            detail: `${eveningCourse === 'ESE' ? 'ESE' : 'CIS'} HW work`,
-            duration: 1.5,
-            done: false,
-            originalDate: dateKey,
-            hwNum: eveningCourse === 'ESE' ? eseHwNum : cisHwNum,
-          });
-        }
       }
 
-      // Weekends: minimum, only on spike weeks
-      if ((dayOfWeek === 6 || dayOfWeek === 0) && isSpike) {
-        // Saturday on spike weeks
-        if (dayOfWeek === 6) {
-          const focus = weekDeadlines.find(d => d.type === 'exam' || d.type === 'project')?.course
-                     || weekDeadlines.find(d => d.type === 'hw')?.course
-                     || 'CIS';
-          blocks.push({
-            id: `${dateKey}-spike`,
-            slot: 'weekend',
-            course: focus,
-            activity: 'Spike Week Push',
-            detail: 'Catch up on whichever has the nearest deadline',
-            duration: 3.0,
-            done: false,
-            spike: true,
-            originalDate: dateKey,
-          });
-        }
+      // Tue AM — full week's ESE lecture content in one block
+      if (dayOfWeek === 2) {
+        blocks.push({
+          id: `${dateKey}-ese-lec`,
+          slot: 'morning',
+          course: 'ESE',
+          activity: 'Lectures',
+          detail: `Module ${eseModule.num}: ${eseModule.title}`,
+          duration: 3.0,
+          done: false,
+          originalDate: dateKey,
+          lectureNum: eseModule.num,
+        });
+      }
+
+      // Wed PM — CIS homework, one block
+      if (dayOfWeek === 3) {
+        blocks.push({
+          id: `${dateKey}-cis-hw`,
+          slot: 'evening',
+          course: 'CIS',
+          activity: 'Homework',
+          detail: 'CIS HW work',
+          duration: 3.0,
+          done: false,
+          originalDate: dateKey,
+          hwNum: cisHwNum,
+        });
+      }
+
+      // Thu PM — ESE homework, one block
+      if (dayOfWeek === 4) {
+        blocks.push({
+          id: `${dateKey}-ese-hw`,
+          slot: 'evening',
+          course: 'ESE',
+          activity: 'Homework',
+          detail: 'ESE HW work',
+          duration: 3.0,
+          done: false,
+          originalDate: dateKey,
+          hwNum: eseHwNum,
+        });
+      }
+
+      // Fri PM — quizzes / catch-up
+      if (dayOfWeek === 5) {
+        blocks.push({
+          id: `${dateKey}-catchup`,
+          slot: 'evening',
+          course: 'BOTH',
+          activity: 'Quizzes / Catch-up',
+          detail: 'Light: weekly quizzes, review notes, or rest',
+          duration: 1.0,
+          done: false,
+          optional: true,
+          originalDate: dateKey,
+          quizNum: eseQuizNum,
+        });
+      }
+
+      // Sat — spike week push
+      if (dayOfWeek === 6 && isSpike) {
+        const focus = weekDeadlines.find(d => d.type === 'exam' || d.type === 'project')?.course
+                   || weekDeadlines.find(d => d.type === 'hw')?.course
+                   || 'CIS';
+        blocks.push({
+          id: `${dateKey}-spike`,
+          slot: 'weekend',
+          course: focus,
+          activity: 'Spike Week Push',
+          detail: 'Catch up on whichever has the nearest deadline',
+          duration: 3.0,
+          done: false,
+          spike: true,
+          originalDate: dateKey,
+        });
       }
 
       schedule[dateKey] = blocks;
@@ -455,13 +491,15 @@ function backfillOriginalDate(parsed) {
 
 export default function StudyPlanner() {
   const allWeeks = useMemo(() => getAllWeeks(), []);
-  const [currentWeekIdx, setCurrentWeekIdx] = useState(0);
+  const [currentWeekIdx, setCurrentWeekIdx] = useState(() => findCurrentWeekIdx(getAllWeeks()));
   const [schedule, setSchedule] = useState({});
   const [loading, setLoading] = useState(true);
   const [editingBlock, setEditingBlock] = useState(null);
   const [draggedBlock, setDraggedBlock] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
+  const [splitDialog, setSplitDialog] = useState(null);
+  const [splitInput, setSplitInput] = useState('');
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'saving' | 'error'
   const [theme, setTheme] = useState(() => {
     if (typeof window === 'undefined') return 'light';
@@ -659,6 +697,56 @@ export default function StudyPlanner() {
     newSchedule[dateKey] = (newSchedule[dateKey] || []).map(b =>
       b.id === blockId ? { ...b, ...updates } : b
     );
+    saveSchedule(newSchedule);
+  };
+
+  const openSplitDialog = (dateKey, blockId) => {
+    const block = (schedule[dateKey] || []).find(b => b.id === blockId);
+    if (!block) return;
+    const half = Math.round((block.duration / 2) * 4) / 4;
+    setSplitInput(String(half));
+    setSplitDialog({ dateKey, blockId, duration: block.duration });
+  };
+
+  const splitBlock = (dateKey, blockId, firstHours) => {
+    const newSchedule = { ...schedule };
+    const dayBlocks = newSchedule[dateKey] || [];
+    const idx = dayBlocks.findIndex(b => b.id === blockId);
+    if (idx === -1) return;
+    const original = dayBlocks[idx];
+    const second = Math.round((original.duration - firstHours) * 100) / 100;
+    if (firstHours <= 0 || second <= 0) return;
+    const updated = { ...original, duration: firstHours };
+    const partner = {
+      ...original,
+      id: `${dateKey}-split-${Date.now()}`,
+      duration: second,
+      done: false,
+    };
+    newSchedule[dateKey] = [
+      ...dayBlocks.slice(0, idx),
+      updated,
+      partner,
+      ...dayBlocks.slice(idx + 1),
+    ];
+    saveSchedule(newSchedule);
+  };
+
+  const moveBlockToNextWeek = (dateKey, blockId) => {
+    const target = getNextWeekDate(dateKey);
+    if (target > SEMESTER_END) return;
+    const targetKey = fmtDate(target);
+    const newSchedule = { ...schedule };
+    const block = (newSchedule[dateKey] || []).find(b => b.id === blockId);
+    if (!block) return;
+    const moved = {
+      ...block,
+      id: `${targetKey}-moved-${Date.now()}`,
+    };
+    newSchedule[dateKey] = (newSchedule[dateKey] || []).filter(b => b.id !== blockId);
+    const targetBlocks = [...(newSchedule[targetKey] || []), moved];
+    targetBlocks.sort((a, b) => compareBlocks(a, b, targetKey));
+    newSchedule[targetKey] = targetBlocks;
     saveSchedule(newSchedule);
   };
 
@@ -1124,19 +1212,25 @@ export default function StudyPlanner() {
                 })}
 
                 {/* Study blocks */}
-                {day.blocks.map(block => (
-                  <BlockCard
-                    key={block.id}
-                    block={block}
-                    dateKey={day.dateKey}
-                    onToggle={() => toggleDone(day.dateKey, block.id)}
-                    onDelete={() => deleteBlock(day.dateKey, block.id)}
-                    onUpdate={(updates) => updateBlock(day.dateKey, block.id, updates)}
-                    onDragStart={() => handleDragStart(day.dateKey, block)}
-                    isEditing={editingBlock?.blockId === block.id}
-                    setEditing={(v) => setEditingBlock(v ? { dateKey: day.dateKey, blockId: block.id } : null)}
-                  />
-                ))}
+                {day.blocks.map(block => {
+                  const nextTarget = getNextWeekDate(day.dateKey);
+                  const canMoveNext = nextTarget <= SEMESTER_END;
+                  return (
+                    <BlockCard
+                      key={block.id}
+                      block={block}
+                      dateKey={day.dateKey}
+                      onToggle={() => toggleDone(day.dateKey, block.id)}
+                      onDelete={() => deleteBlock(day.dateKey, block.id)}
+                      onUpdate={(updates) => updateBlock(day.dateKey, block.id, updates)}
+                      onDragStart={() => handleDragStart(day.dateKey, block)}
+                      onSplit={() => openSplitDialog(day.dateKey, block.id)}
+                      onMoveNext={canMoveNext ? () => moveBlockToNextWeek(day.dateKey, block.id) : null}
+                      isEditing={editingBlock?.blockId === block.id}
+                      setEditing={(v) => setEditingBlock(v ? { dateKey: day.dateKey, blockId: block.id } : null)}
+                    />
+                  );
+                })}
 
                 {day.blocks.length === 0 && !isWeekend && (
                   <div style={{ fontSize: '11px', color: 'var(--text-muted)', opacity: 0.5, marginTop: '20px', textAlign: 'center' }}>
@@ -1157,7 +1251,7 @@ export default function StudyPlanner() {
             <ul style={{ fontSize: '13px', lineHeight: 1.6, paddingLeft: '16px', margin: 0 }}>
               <li><strong>Click</strong> the checkbox to mark a block done</li>
               <li><strong>Drag</strong> blocks between days to reschedule</li>
-              <li><strong>Click</strong> the pencil icon to edit a block</li>
+              <li><strong>Pencil</strong> edits a block · <strong>scissors</strong> splits it · <strong>calendar+</strong> bumps to next week</li>
               <li><strong>+</strong> adds a custom block to any day</li>
               <li>Changes save automatically</li>
             </ul>
@@ -1167,9 +1261,11 @@ export default function StudyPlanner() {
               Default rhythm
             </div>
             <div style={{ fontSize: '13px', lineHeight: 1.6 }}>
-              <div><strong>Mornings:</strong> Lectures (<span className="mono">1.5 hr</span>) — CIS Mon/Wed/Fri, ESE Tue/Thu</div>
-              <div><strong>Evenings:</strong> Homework (<span className="mono">1.5 hr</span>) — alternate course</div>
-              <div><strong>Friday PM:</strong> Light catch-up</div>
+              <div><strong>Mon AM:</strong> CIS lectures (<span className="mono">4.5h</span>)</div>
+              <div><strong>Tue AM:</strong> ESE lectures (<span className="mono">3h</span>)</div>
+              <div><strong>Wed PM:</strong> CIS homework (<span className="mono">3h</span>)</div>
+              <div><strong>Thu PM:</strong> ESE homework (<span className="mono">3h</span>)</div>
+              <div><strong>Fri PM:</strong> Quizzes / catch-up (<span className="mono">1h</span>)</div>
               <div><strong>Weekends:</strong> Off — except spike weeks</div>
             </div>
           </div>
@@ -1215,6 +1311,82 @@ export default function StudyPlanner() {
           Built for Abe · Summer 2026
         </div>
       </div>
+
+      {/* Split Modal */}
+      {splitDialog && (() => {
+        const parsed = parseFloat(splitInput);
+        const valid = Number.isFinite(parsed) && parsed > 0 && parsed < splitDialog.duration;
+        const second = valid ? Math.round((splitDialog.duration - parsed) * 100) / 100 : null;
+        return (
+          <div
+            onClick={() => setSplitDialog(null)}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'var(--modal-overlay)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 100,
+              padding: '16px',
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border)',
+                maxWidth: '420px',
+                width: '100%',
+                padding: '24px',
+                borderRadius: '4px',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Split this block</h3>
+              <p style={{ marginTop: '12px', marginBottom: '16px', fontSize: '13px', color: 'var(--text-detail)', lineHeight: 1.5 }}>
+                Current duration: <span className="mono">{splitDialog.duration}h</span>. How many hours for the first part?
+              </p>
+              <input
+                className="inline-edit"
+                type="number"
+                step="0.25"
+                min="0.25"
+                max={splitDialog.duration - 0.25}
+                value={splitInput}
+                autoFocus
+                onChange={(e) => setSplitInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && valid) {
+                    splitBlock(splitDialog.dateKey, splitDialog.blockId, parsed);
+                    setSplitDialog(null);
+                  }
+                }}
+                style={{ fontSize: '14px', padding: '6px 8px' }}
+              />
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '8px', minHeight: '18px' }}>
+                {valid ? (
+                  <>First: <span className="mono">{parsed}h</span> · Second: <span className="mono">{second}h</span></>
+                ) : (
+                  <span style={{ color: 'var(--pill-exam-border)' }}>Enter a value between 0 and {splitDialog.duration}.</span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
+                <button className="btn" onClick={() => setSplitDialog(null)}>Cancel</button>
+                <button
+                  className="btn btn-primary"
+                  disabled={!valid}
+                  onClick={() => {
+                    splitBlock(splitDialog.dateKey, splitDialog.blockId, parsed);
+                    setSplitDialog(null);
+                  }}
+                >
+                  Split
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Confirmation Modal */}
       {confirmAction && (
@@ -1297,7 +1469,7 @@ function StatCell({ label, value, sub, color }) {
   );
 }
 
-function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, isEditing, setEditing }) {
+function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, onSplit, onMoveNext, isEditing, setEditing }) {
   const courseColor = block.course === 'BOTH' ? 'var(--course-both)' : (COURSES[block.course]?.color || 'var(--course-both)');
   const courseAccent = block.course === 'BOTH' ? '#e5e7eb' : (COURSES[block.course]?.accent || '#e5e7eb');
   const type = blockType(block);
@@ -1465,6 +1637,24 @@ function BlockCard({ block, dateKey, onToggle, onDelete, onUpdate, onDragStart, 
           >
             <Edit3 size={11}/>
           </button>
+          {onSplit && block.duration > 0.5 && (
+            <button
+              onClick={onSplit}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '1px', opacity: 0.5 }}
+              title="Split into two"
+            >
+              <Scissors size={11}/>
+            </button>
+          )}
+          {onMoveNext && (
+            <button
+              onClick={onMoveNext}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '1px', opacity: 0.5 }}
+              title="Move to next week"
+            >
+              <CalendarPlus size={11}/>
+            </button>
+          )}
         </div>
       </div>
     </div>
